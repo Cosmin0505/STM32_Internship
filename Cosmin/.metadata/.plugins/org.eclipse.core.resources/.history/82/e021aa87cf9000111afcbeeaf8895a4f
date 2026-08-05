@@ -1,0 +1,237 @@
+/*
+ * uart.c
+ *
+ *  Created on: Jul 30, 2026
+ *      Author: busilam
+ */
+
+
+#include "stm32f070xb.h"
+#include <stdio.h>
+#include <string.h>
+#include "uart.h"
+#include "dma.h"
+
+static volatile char sent_bit = '\0';
+static volatile char rcv_bit = '\0';
+static volatile char rcv_msg[100];
+
+/* UART2 - Communication Nucleo <-> Laptop */
+void uart2_init(void) {
+	/* Configura PA2 as UART2 TX */
+	/* Enable clock access to GPIOA */
+	RCC->AHBENR |= GPIOA_EN;
+	/* Configure PA2 as alternate mode */
+	GPIOA->MODER &=~ (1U << 4);
+	GPIOA->MODER  |= (1U << 5);
+	/* Set PA2 alternate function type */
+	GPIOA->AFR[0] |= (1U << 8);
+	GPIOA->AFR[0] &=~ (1U << 9);
+	GPIOA->AFR[0] &=~ (1U << 10);
+	GPIOA->AFR[0] &=~ (1U << 11);
+
+	/* Configura PA2 as UART2 RX */
+	/* Configure PA3 as alternate mode */
+	GPIOA->MODER &=~ (1U << 6);
+	GPIOA->MODER  |= (1U << 7);
+	/* Set PA3 alternate function type */
+	GPIOA->AFR[0] |= (1U << 12);
+	GPIOA->AFR[0] &=~ (1U << 13);
+	GPIOA->AFR[0] &=~ (1U << 14);
+	GPIOA->AFR[0] &=~ (1U << 15);
+
+	/* Enable clock access to UART2 and UART3 */
+	RCC->APB1ENR = UART2_EN;
+	/* Configure UART2 */
+	/* Enable Receiver Configuration (p. 600) */
+	/* 1. Program M bit in USART2->CR1 */
+	/* (keep it 0 as default 8-bit msg length) */
+	/* 2. Select desired baudarte (9600) */
+	USART2->BRR = (FCLK + (BAUDRATE/2))/BAUDRATE;
+	/* 3. Program no. stop bits in USART_CR2 */
+	/* (keep it 0 as default 1 stop bit) */
+	/* 4. Enable interruption enable on receive in USART_CR1 */
+	USART2->CR1 |= UART2_RXNEIE;
+	NVIC_EnableIRQ(USART2_IRQn);
+	/* 5. Enable UART by setting UE bit in USART_CR1 */
+	/* USART2->CR1 |= UART2_UE; */
+	/* Enable Receiver */
+	USART2->CR1 |= UART2_RE;
+
+	/* Enable Transmitter Configuration (p. 597) */
+	/* 1. Program the M bit in USART_CR1 to define the msg length */
+	/* Keep 0 as default 8-bit msg length */
+	/* 2. Select the desired baud rate using the USART_BRR register */
+	USART2->BRR = (FCLK + (BAUDRATE/2))/BAUDRATE;
+	/* 3. Program the number of stop bits in USART_CR2 */
+	/* (keep it 0 as default 1 stop bit) */
+	/* 4. Enable the USART by writing the UE bit in USART_CR1 register to 1 */
+	USART2->CR1 |= UART2_UE;
+	/* Enable Transmitter */
+	USART2->CR1 |= UART2_TE;
+}
+
+/* UART1 - Communication Nucleo <-> Discovery */
+void uart1_init(void) {
+	/* Configura PA9 as UART1 TX */
+	/* Enable clock access to GPIOA */
+	RCC->AHBENR |= GPIOA_EN;
+	/* Configure PA9 as alternate mode */
+	GPIOA->MODER &=~ (1U << 18);
+	GPIOA->MODER  |= (1U << 19);
+	/* Set PA9 alternate function type */
+	GPIOA->AFR[1] |= (1U << 4);
+	GPIOA->AFR[1] &=~ (1U << 5);
+	GPIOA->AFR[1] &=~ (1U << 6);
+	GPIOA->AFR[1] &=~ (1U << 7);
+
+	/* Configura PA10 as UART1 RX */
+	/* Configure PA10 as alternate mode */
+	GPIOA->MODER &=~ (1U << 20);
+	GPIOA->MODER  |= (1U << 21);
+	/* Set PA10 alternate function type */
+	GPIOA->AFR[1] |= (1U << 8);
+	GPIOA->AFR[1] &=~ (1U << 9);
+	GPIOA->AFR[1] &=~ (1U << 10);
+	GPIOA->AFR[1] &=~ (1U << 11);
+
+	/* Enable clock access to UART1 */
+	RCC->APB2ENR |= UART1_EN;
+	/* Configure UART1 */
+	/* Enable Receiver Configuration (p. 600) */
+	/* 1. Program M bit in USART2->CR1 */
+	/* (keep it 0 as default 8-bit msg length) */
+	/* 2. Select desired baudarte (9600) */
+	USART1->BRR = (FCLK + (BAUDRATE/2))/BAUDRATE;
+	/* 3. Program no. stop bits in USART_CR2 */
+	/* (keep it 0 as default 1 stop bit) */
+	/* 4. Enable interruption enable on receive in USART_CR1 */
+	USART1->CR1 |= UART1_RXNEIE;
+	/* 5. Enable UART by setting UE bit in USART_CR1 */
+	/* USART2->CR1 |= UART2_UE; */
+	/* Enable Receiver */
+	USART1->CR1 |= UART1_RE;
+
+	/* Enable Transmitter Configuration (p. 597) */
+	/* 1. Program the M bit in USART_CR1 to define the msg length */
+	/* Keep 0 as default 8-bit msg length */
+	/* 2. Select the desired baud rate using the USART_BRR register */
+	USART1->BRR = (FCLK + (BAUDRATE/2))/BAUDRATE;
+	/* 3. Program the number of stop bits in USART_CR2 */
+	/* (keep it 0 as default 1 stop bit) */
+	/* Enable interrupt on Transmission Complete */
+	NVIC_EnableIRQ(USART1_IRQn);
+	/* 4. Enable the USART by writing the UE bit in USART_CR1 register to 1 */
+	USART1->CR1 |= UART1_UE;
+	/* Enable Transmitter */
+	USART1->CR1 |= UART1_TE;
+}
+
+void uart2_write(char bit) {
+	/* If TC bit is set, store into TDR the value */
+	if(USART2->ISR & UART2_TC) {
+		USART2->TDR = (uint16_t)bit;
+	}
+}
+
+void uart2_write_string(char* received_msg) {
+	for(int i=0; i<strlen(received_msg); i++) {
+	    		uart2_write(received_msg[i]);
+			}
+}
+
+void uart2_read(char *output) {
+	/* Wait until receive is complete */
+	while(!(USART2->ISR & UART2_RXNE)) {
+	}
+	*output = USART2->RDR;
+}
+
+void uart1_write(char bit) {
+	/* If TC bit is set, store into TDR the value */
+	if(USART1->ISR & UART1_TC) {
+		USART1->TDR = (uint16_t)bit;
+	}
+}
+
+
+void uart1_read(char *output) {
+	/* Wait until receive is complete */
+	while(!(USART1->ISR & UART1_RXNE)) {
+	}
+	*output = USART1->RDR;
+}
+
+void transmit(void) {
+	/* Initiate message and bit to transmit */
+	char bit[2] = "\0\0";
+	char msg[100] = "\0";
+	/* Read from keyboard each bit I want to send to Discovery */
+	/* Store each bit I write in a buffer untill I press enter */
+	do {
+		uart2_read(&bit[0]);
+		/* Display to prompt each bit I type */
+		uart2_write(bit[0]);
+		strcat(msg, bit);
+	} while(bit[0] != '\r');
+	for(int i=0; i<strlen(msg); i++) {
+		/* Send bit to Discovery */
+		uart1_write(msg[i]);
+	}
+	/* Send new line to Discovery */
+	uart1_write('\n');
+	/* Write to terminal */
+	uart2_write_string("\r\nCosmin: ");
+	uart2_write_string(msg);
+	uart2_write_string("\n\r");
+}
+
+void transmit_debug(char *send_msg) {
+	for(int i=0; i<strlen(send_msg); i++) {
+		/* Send bit to Discovery */
+		uart1_write(send_msg[i]);
+	}
+	strcat("Cosmin: ", send_msg);
+	uart2_write_string(send_msg);
+}
+
+
+int8_t receive(char *received_bit, char *received_msg) {
+	/* Set return flag */
+	int8_t switch_to_write = 0;
+	/* Read from Discovery */
+	uart1_read(&received_bit[0]);
+	strcat(received_msg, received_bit);
+	/* If Enter received from Discovery */
+	if(received_bit[0] == '\n') {
+		/* Write to terminal */
+		uart2_write_string("\r\nVlad: ");
+		uart2_write_string(received_msg);
+		uart2_write_string("\r\n");
+		/* Reset message buffer */
+		strcpy(received_msg, "\0");
+		/* Enable writing */
+		switch_to_write = 1;
+	}
+	return switch_to_write;
+}
+
+/* Interrupt USART2 */
+void USART2_IRQHandler(void) {
+	if(USART2->ISR & UART2_RXNE) {
+		USART2->TDR = USART2->RDR;
+		sent_bit = USART2->RDR;
+		uart1_write(sent_bit);
+	}
+}
+
+/* Interrupt USART1 */
+void USART1_IRQHandler(void) {
+	static int length = 0;
+	if(USART1->ISR & UART1_RXNE) {
+		rcv_bit = USART1->RDR;
+		rcv_msg[length++] = rcv_bit;
+	}
+}
+
+
