@@ -1,5 +1,0 @@
-../Core/Inc/usart1.c:19:6:usart1_init	4	static
-../Core/Inc/usart1.c:64:6:usart1_transmit_byte	16	static
-../Core/Inc/usart1.c:69:6:usart1_receive_byte	16	static
-../Core/Inc/usart1.c:80:6:usart1_try_receive_byte	16	static
-../Core/Inc/usart1.c:89:6:usart1_transmit_string	24	static
