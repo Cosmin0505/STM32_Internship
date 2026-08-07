@@ -23,12 +23,12 @@
 
 #define COSMIN_STRING	"Cosmin: "
 uint16_t sent_bit = 65535;
+char output_sent_msg[MAX_SIZE];
 
 int main(void) {
 
 	static char sent_msg[MAX_SIZE] = "\0";
 	static uint8_t len = 0;
-	char output_sent_msg[MAX_SIZE + strlen(COSMIN_STRING)];
 	char output_sent_msg_final[MAX_SIZE + strlen(COSMIN_STRING)];
 
 	uart2_init();
@@ -42,22 +42,22 @@ int main(void) {
     	/* Build message */
     	if (sent_bit != 65535) {
         	build_message(sent_msg, sent_bit, &len);
-        	sent_bit = -1;
-    	}
-    	/* If \r is typed then send message */
-    	if(sent_bit == '\r') {
-    		strcat(output_sent_msg, COSMIN_STRING);
-    		strcat(output_sent_msg, sent_msg);
-    		strcat(output_sent_msg, "\r\n");
-    		memcpy(output_sent_msg_final, output_sent_msg, sizeof(char) * (MAX_SIZE + strlen(COSMIN_STRING)));
-    		dma2_write((uint32_t)output_sent_msg_final, strlen(output_sent_msg_final));
-    		dma4_write((uint32_t)output_sent_msg_final, strlen(output_sent_msg_final));
-    		memset(sent_msg, 0, (strlen(sent_msg) * sizeof(char)));
-    		memset(output_sent_msg, 0, (strlen(output_sent_msg) * sizeof(char)));
-    		len = 0;
-    		sent_bit = 0;
-    	}
+        	/* If \r is typed then send message */
+        	/* TODO: Prevent sending blank messages */
+			if(sent_bit == '\r') {
+				strcat(output_sent_msg, COSMIN_STRING);
+				strcat(output_sent_msg, sent_msg);
+				memcpy(output_sent_msg_final, output_sent_msg, sizeof(char) * (MAX_SIZE + strlen(COSMIN_STRING)));
+				dma2_write((uint32_t)output_sent_msg_final, strlen(output_sent_msg_final));
+				strcat(output_sent_msg_final, "\n");
+				dma4_write((uint32_t)output_sent_msg_final, strlen(output_sent_msg_final));
+				memset(sent_msg, 0, (strlen(sent_msg) * sizeof(char)));
+				memset(output_sent_msg, 0, (strlen(output_sent_msg) * sizeof(char)));
+				len = 0;
+			}
+			sent_bit = 65535;
     	/* At the same time, listen to message and interrupt if needed */
+    	}
     }
 
     return 0;

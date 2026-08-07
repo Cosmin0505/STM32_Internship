@@ -218,9 +218,9 @@ int8_t receive(char *received_bit, char *received_msg) {
 /* Interrupt USART2 */
 void USART2_IRQHandler(void) {
 	if(USART2->ISR & UART2_RXNE) {
-		USART2->TDR = USART2->RDR;
 		sent_bit = USART2->RDR;
-		uart1_write(sent_bit);
+		USART2->TDR = sent_bit;
+//		uart1_write(sent_bit);
 	}
 }
 
@@ -238,7 +238,7 @@ void USART1_IRQHandler(void) {
 		rcv_bit = USART1->RDR;
 	}
 	if(rcv_bit == '\r') {
-		strcat(rcv_msg,"\n\r");
+		strcat(rcv_msg,"\n");
 		memcpy(rcv_msg_output, rcv_msg, sizeof(char) * MAX_SIZE);
 		dma4_write((uint32_t)rcv_msg_output, strlen(rcv_msg));
 		length = 0;
