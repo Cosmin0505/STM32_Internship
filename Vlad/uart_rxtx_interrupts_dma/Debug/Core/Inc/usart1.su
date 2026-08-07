@@ -8,5 +8,4 @@
 ../Core/Inc/usart1.c:166:6:usart1_tx_busy	4	static
 ../Core/Inc/usart1.c:171:6:usart1_write	24	static
 ../Core/Inc/usart1.c:199:6:usart1_rx_interrupt_handler	8	static
-../Core/Inc/usart1.c:231:6:usart1_rx_interrupt_test_handler	8	static
-../Core/Inc/usart1.c:251:6:USART1_IRQHandler	8	static
+../Core/Inc/usart1.c:254:6:USART1_IRQHandler	8	static

@@ -27,9 +27,9 @@
 
 static char tx_buf[MAX_LENGTH];
 
-char c_in_uart4 = ' ';
-char received_string_uart4[MAX_LENGTH];
-char string_to_be_transmitted_uart4[MAX_LENGTH];
+extern char c_in_uart4;
+extern char received_string_uart4[MAX_LENGTH];
+extern char string_to_be_transmitted_uart4[MAX_LENGTH];
 uint8_t len_uart4;
 
 void uart4_init(void)
@@ -203,42 +203,48 @@ void uart4_rx_interrupt_handler(void)
 		if(len_uart4 < MAX_LENGTH - 1)
 		{
 			received_string_uart4[len_uart4++] = c_in_uart4;
-			received_string_uart4[len_uart4] = '\0';
 		}
 	}
 	else
 	{
-		usart1_transmit_string("Cosmin: ");
-		usart1_transmit_string(received_string_uart4);
-		usart1_transmit_string("\r\n");
-		len_uart4 = 0U;
-		received_string_uart4[0] = '\0';
+		if(len_uart4 > 0)
+		{
+//			usart1_transmit_byte('\n');
+			received_string_uart4[len_uart4++] = '\r';
+			received_string_uart4[len_uart4] = '\0';
+			strcat(received_string_uart4, "\n");
+			usart1_write(received_string_uart4);
+			len_uart4 = 0U;
+			received_string_uart4[0] = '\0';
+//			strcpy(string_to_be_transmitted_uart4, "Cosmin: ");
+//			usart1_write("\n");
+		}
 	}
 }
 
 
-void uart4_rx_interrupt_test_handler(void)
-{
-	uart4_receive_byte(&c_in_uart4);
-	if(c_in_uart4 != '\r')
-	{
-		string_to_be_transmitted_uart4[len_uart4++] = c_in_uart4;
-	}
-	else
-	{
-		string_to_be_transmitted_uart4[len_uart4++] = '\r';
-		string_to_be_transmitted_uart4[len_uart4] = '\0';
-		usart1_write(string_to_be_transmitted_uart4);
-		usart1_write("\r\n");
-		len_uart4 = 0U;
-		string_to_be_transmitted_uart4[0] = '\0';
-	}
-}
+//void uart4_rx_interrupt_test_handler(void)
+//{
+//	uart4_receive_byte(&c_in_uart4);
+//	if(c_in_uart4 != '\r')
+//	{
+//		string_to_be_transmitted_uart4[len_uart4++] = c_in_uart4;
+//	}
+//	else
+//	{
+//		string_to_be_transmitted_uart4[len_uart4++] = '\r';
+//		string_to_be_transmitted_uart4[len_uart4] = '\0';
+//		usart1_write(string_to_be_transmitted_uart4);
+//		usart1_write("\r\n");
+//		len_uart4 = 0U;
+//		string_to_be_transmitted_uart4[0] = '\0';
+//	}
+//}
 
 
 
 void UART4_IRQHandler(void)
 {
-	uart4_rx_interrupt_test_handler();
+	uart4_rx_interrupt_handler();
 }
 

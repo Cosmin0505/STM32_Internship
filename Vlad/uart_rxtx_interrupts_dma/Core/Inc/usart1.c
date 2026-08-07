@@ -29,9 +29,9 @@
 
 static char tx_buf[MAX_LENGTH];
 
-char c_in = ' ';
-char pc_received_string[MAX_LENGTH];
-char string_to_be_transmitted[MAX_LENGTH] = "a";
+extern char c_in_uart1;
+extern char pc_received_string[MAX_LENGTH];
+extern char string_to_be_transmitted[MAX_LENGTH];
 uint8_t len = 0U;
 
 void usart1_init(void)
@@ -198,9 +198,9 @@ bool usart1_write(const char *s)
 
 void usart1_rx_interrupt_handler(void)
 {
-	usart1_receive_byte(&c_in);
+	usart1_receive_byte(&c_in_uart1);
 
-	if((c_in == '\r'))
+	if((c_in_uart1 == '\r'))
 		{
 			if(len > 0)
 			{
@@ -208,12 +208,14 @@ void usart1_rx_interrupt_handler(void)
 				/* \r is the chosen terminator for a sent message*/
 				pc_received_string[len++] = '\r';
 				pc_received_string[len] = '\0';
-				uart4_transmit_string(pc_received_string);
+				strcat(string_to_be_transmitted, pc_received_string);
+				uart4_write(string_to_be_transmitted);
 				usart1_transmit_byte('\r');
-				usart1_transmit_string("Vlad: ");
-				usart1_transmit_string(pc_received_string);
-				usart1_transmit_string("\r\n");
+				strcat(string_to_be_transmitted, "\n");
+				usart1_write(string_to_be_transmitted);
 				len = 0U;
+				pc_received_string[0] = '\0';
+				strcpy(string_to_be_transmitted, "Vlad: ");
 				return;
 			}
 
@@ -222,35 +224,36 @@ void usart1_rx_interrupt_handler(void)
 		{
 			if(len < (MAX_LENGTH - 1))
 			{
-				pc_received_string[len++] = c_in;
-				usart1_transmit_byte(c_in);
+				pc_received_string[len++] = c_in_uart1;
+				usart1_transmit_byte(c_in_uart1);
 			}
 		}
 }
 
-void usart1_rx_interrupt_test_handler(void)
-{
-	usart1_receive_byte(&c_in);
-	if(c_in == '\r')
-	{
-		string_to_be_transmitted[len++] = '\r';
-		string_to_be_transmitted[len] = '\0';
-//		usart1_write(string_to_be_transmitted);
-		uart4_write(string_to_be_transmitted);
-		len = 0U;
-		string_to_be_transmitted[0] = '\0';
-	}
-	else
-	{
-		string_to_be_transmitted[len++] = c_in;
-	}
-}
+//void usart1_rx_interrupt_test_handler(void)
+//{
+//	usart1_receive_byte(&c_in);
+//	if(c_in == '\r')
+//	{
+//		string_to_be_transmitted[len++] = '\r';
+//		string_to_be_transmitted[len] = '\0';
+////		usart1_write(string_to_be_transmitted);
+//		uart4_write(string_to_be_transmitted);
+//		len = 0U;
+//		string_to_be_transmitted[0] = '\0';
+//	}
+//	else
+//	{
+//		string_to_be_transmitted[len++] = c_in;
+//
+//	}
+//}
 
 
 
 void USART1_IRQHandler(void)
 {
-	usart1_rx_interrupt_test_handler();
+	usart1_rx_interrupt_handler();
 }
 
 
