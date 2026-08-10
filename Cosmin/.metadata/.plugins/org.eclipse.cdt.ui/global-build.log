@@ -1,0 +1,70 @@
+16:34:19 **** Incremental Build of configuration Debug for project dma ****
+make -j12 all 
+arm-none-eabi-gcc -mcpu=cortex-m0 -g3 -DDEBUG -c -x assembler-with-cpp -MMD -MP -MF"Startup/startup_stm32f070rbtx.d" -MT"Startup/startup_stm32f070rbtx.o" --specs=nano.specs -mfloat-abi=soft -mthumb -o "Startup/startup_stm32f070rbtx.o" "../Startup/startup_stm32f070rbtx.s"
+arm-none-eabi-gcc "../Src/dma.c" -mcpu=cortex-m0 -std=gnu11 -g3 -DDEBUG -DSTM32F070RBTx -DSTM32 -DSTM32F0 -DNUCLEO_F070RB -c -I../Inc -I"C:/Users/busilam/Cosmin/Traingings/STM32_Bare_Metal/STM32Cube_FW_F0_V1.10.0/Drivers/CMSIS/Device/ST/STM32F0xx/Include" -I"C:/Users/busilam/Cosmin/Traingings/STM32_Bare_Metal/STM32Cube_FW_F0_V1.10.0/Drivers/CMSIS/Include" -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -fcyclomatic-complexity -MMD -MP -MF"Src/dma.d" -MT"Src/dma.o" --specs=nano.specs -mfloat-abi=soft -mthumb -o "Src/dma.o"
+arm-none-eabi-gcc "../Src/main.c" -mcpu=cortex-m0 -std=gnu11 -g3 -DDEBUG -DSTM32F070RBTx -DSTM32 -DSTM32F0 -DNUCLEO_F070RB -c -I../Inc -I"C:/Users/busilam/Cosmin/Traingings/STM32_Bare_Metal/STM32Cube_FW_F0_V1.10.0/Drivers/CMSIS/Device/ST/STM32F0xx/Include" -I"C:/Users/busilam/Cosmin/Traingings/STM32_Bare_Metal/STM32Cube_FW_F0_V1.10.0/Drivers/CMSIS/Include" -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -fcyclomatic-complexity -MMD -MP -MF"Src/main.d" -MT"Src/main.o" --specs=nano.specs -mfloat-abi=soft -mthumb -o "Src/main.o"
+arm-none-eabi-gcc "../Src/syscalls.c" -mcpu=cortex-m0 -std=gnu11 -g3 -DDEBUG -DSTM32F070RBTx -DSTM32 -DSTM32F0 -DNUCLEO_F070RB -c -I../Inc -I"C:/Users/busilam/Cosmin/Traingings/STM32_Bare_Metal/STM32Cube_FW_F0_V1.10.0/Drivers/CMSIS/Device/ST/STM32F0xx/Include" -I"C:/Users/busilam/Cosmin/Traingings/STM32_Bare_Metal/STM32Cube_FW_F0_V1.10.0/Drivers/CMSIS/Include" -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -fcyclomatic-complexity -MMD -MP -MF"Src/syscalls.d" -MT"Src/syscalls.o" --specs=nano.specs -mfloat-abi=soft -mthumb -o "Src/syscalls.o"
+arm-none-eabi-gcc "../Src/sysmem.c" -mcpu=cortex-m0 -std=gnu11 -g3 -DDEBUG -DSTM32F070RBTx -DSTM32 -DSTM32F0 -DNUCLEO_F070RB -c -I../Inc -I"C:/Users/busilam/Cosmin/Traingings/STM32_Bare_Metal/STM32Cube_FW_F0_V1.10.0/Drivers/CMSIS/Device/ST/STM32F0xx/Include" -I"C:/Users/busilam/Cosmin/Traingings/STM32_Bare_Metal/STM32Cube_FW_F0_V1.10.0/Drivers/CMSIS/Include" -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -fcyclomatic-complexity -MMD -MP -MF"Src/sysmem.d" -MT"Src/sysmem.o" --specs=nano.specs -mfloat-abi=soft -mthumb -o "Src/sysmem.o"
+arm-none-eabi-gcc "../Src/uart.c" -mcpu=cortex-m0 -std=gnu11 -g3 -DDEBUG -DSTM32F070RBTx -DSTM32 -DSTM32F0 -DNUCLEO_F070RB -c -I../Inc -I"C:/Users/busilam/Cosmin/Traingings/STM32_Bare_Metal/STM32Cube_FW_F0_V1.10.0/Drivers/CMSIS/Device/ST/STM32F0xx/Include" -I"C:/Users/busilam/Cosmin/Traingings/STM32_Bare_Metal/STM32Cube_FW_F0_V1.10.0/Drivers/CMSIS/Include" -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -fcyclomatic-complexity -MMD -MP -MF"Src/uart.d" -MT"Src/uart.o" --specs=nano.specs -mfloat-abi=soft -mthumb -o "Src/uart.o"
+../Src/main.c: In function 'main':
+../Src/main.c:30:19: warning: passing argument 1 of 'dma2_init' discards 'volatile' qualifier from pointer target type [-Wdiscarded-qualifiers]
+   30 |         dma2_init(sent_msg);
+      |                   ^~~~~~~~
+In file included from ../Src/main.c:20:
+../Inc/dma.h:12:22: note: expected 'char *' but argument is of type 'volatile char *'
+   12 | void dma2_init(char* msg);
+      |                ~~~~~~^~~
+../Src/uart.c: In function 'USART1_IRQHandler':
+../Src/uart.c:236:27: warning: passing argument 1 of 'dma4_init' discards 'volatile' qualifier from pointer target type [-Wdiscarded-qualifiers]
+  236 |                 dma4_init(rcv_msg);
+      |                           ^~~~~~~
+In file included from ../Src/uart.c:13:
+../Inc/dma.h:11:22: note: expected 'char *' but argument is of type 'volatile char *'
+   11 | void dma4_init(char* msg);
+      |                ~~~~~~^~~
+arm-none-eabi-gcc -o "dma.elf" @"objects.list"   -mcpu=cortex-m0 -T"C:\Users\busilam\OneDrive - Bertrandt AG\Desktop\STM32_Internship\Cosmin\dma\STM32F070RBTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="dma.map" -Wl,--gc-sections -static -L"C:\Users\busilam\Cosmin\Traingings\STM32_Bare_Metal\STM32Cube_FW_F0_V1.10.0\Drivers\CMSIS\Include" -L"C:\Users\busilam\Cosmin\Traingings\STM32_Bare_Metal\STM32Cube_FW_F0_V1.10.0\Drivers\CMSIS\Device\ST\STM32F0xx\Include" --specs=nano.specs -mfloat-abi=soft -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+Finished building target: dma.elf
+ 
+arm-none-eabi-size  dma.elf 
+arm-none-eabi-objdump -h -S dma.elf  > "dma.list"
+   text	   data	    bss	    dec	    hex	filename
+   1884	    100	   1676	   3660	    e4c	dma.elf
+Finished building: default.size.stdout
+ 
+Finished building: dma.list
+ 
+16:34:27 **** Incremental Build of configuration Debug for project dma ****
+make -j12 all 
+arm-none-eabi-gcc -mcpu=cortex-m0 -g3 -DDEBUG -c -x assembler-with-cpp -MMD -MP -MF"Startup/startup_stm32f070rbtx.d" -MT"Startup/startup_stm32f070rbtx.o" --specs=nano.specs -mfloat-abi=soft -mthumb -o "Startup/startup_stm32f070rbtx.o" "../Startup/startup_stm32f070rbtx.s"
+arm-none-eabi-gcc "../Src/dma.c" -mcpu=cortex-m0 -std=gnu11 -g3 -DDEBUG -DSTM32F070RBTx -DSTM32 -DSTM32F0 -DNUCLEO_F070RB -c -I../Inc -I"C:/Users/busilam/Cosmin/Traingings/STM32_Bare_Metal/STM32Cube_FW_F0_V1.10.0/Drivers/CMSIS/Device/ST/STM32F0xx/Include" -I"C:/Users/busilam/Cosmin/Traingings/STM32_Bare_Metal/STM32Cube_FW_F0_V1.10.0/Drivers/CMSIS/Include" -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -fcyclomatic-complexity -MMD -MP -MF"Src/dma.d" -MT"Src/dma.o" --specs=nano.specs -mfloat-abi=soft -mthumb -o "Src/dma.o"
+arm-none-eabi-gcc "../Src/main.c" -mcpu=cortex-m0 -std=gnu11 -g3 -DDEBUG -DSTM32F070RBTx -DSTM32 -DSTM32F0 -DNUCLEO_F070RB -c -I../Inc -I"C:/Users/busilam/Cosmin/Traingings/STM32_Bare_Metal/STM32Cube_FW_F0_V1.10.0/Drivers/CMSIS/Device/ST/STM32F0xx/Include" -I"C:/Users/busilam/Cosmin/Traingings/STM32_Bare_Metal/STM32Cube_FW_F0_V1.10.0/Drivers/CMSIS/Include" -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -fcyclomatic-complexity -MMD -MP -MF"Src/main.d" -MT"Src/main.o" --specs=nano.specs -mfloat-abi=soft -mthumb -o "Src/main.o"
+arm-none-eabi-gcc "../Src/syscalls.c" -mcpu=cortex-m0 -std=gnu11 -g3 -DDEBUG -DSTM32F070RBTx -DSTM32 -DSTM32F0 -DNUCLEO_F070RB -c -I../Inc -I"C:/Users/busilam/Cosmin/Traingings/STM32_Bare_Metal/STM32Cube_FW_F0_V1.10.0/Drivers/CMSIS/Device/ST/STM32F0xx/Include" -I"C:/Users/busilam/Cosmin/Traingings/STM32_Bare_Metal/STM32Cube_FW_F0_V1.10.0/Drivers/CMSIS/Include" -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -fcyclomatic-complexity -MMD -MP -MF"Src/syscalls.d" -MT"Src/syscalls.o" --specs=nano.specs -mfloat-abi=soft -mthumb -o "Src/syscalls.o"
+arm-none-eabi-gcc "../Src/sysmem.c" -mcpu=cortex-m0 -std=gnu11 -g3 -DDEBUG -DSTM32F070RBTx -DSTM32 -DSTM32F0 -DNUCLEO_F070RB -c -I../Inc -I"C:/Users/busilam/Cosmin/Traingings/STM32_Bare_Metal/STM32Cube_FW_F0_V1.10.0/Drivers/CMSIS/Device/ST/STM32F0xx/Include" -I"C:/Users/busilam/Cosmin/Traingings/STM32_Bare_Metal/STM32Cube_FW_F0_V1.10.0/Drivers/CMSIS/Include" -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -fcyclomatic-complexity -MMD -MP -MF"Src/sysmem.d" -MT"Src/sysmem.o" --specs=nano.specs -mfloat-abi=soft -mthumb -o "Src/sysmem.o"
+arm-none-eabi-gcc "../Src/uart.c" -mcpu=cortex-m0 -std=gnu11 -g3 -DDEBUG -DSTM32F070RBTx -DSTM32 -DSTM32F0 -DNUCLEO_F070RB -c -I../Inc -I"C:/Users/busilam/Cosmin/Traingings/STM32_Bare_Metal/STM32Cube_FW_F0_V1.10.0/Drivers/CMSIS/Device/ST/STM32F0xx/Include" -I"C:/Users/busilam/Cosmin/Traingings/STM32_Bare_Metal/STM32Cube_FW_F0_V1.10.0/Drivers/CMSIS/Include" -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -fcyclomatic-complexity -MMD -MP -MF"Src/uart.d" -MT"Src/uart.o" --specs=nano.specs -mfloat-abi=soft -mthumb -o "Src/uart.o"
+../Src/main.c: In function 'main':
+../Src/main.c:30:19: warning: passing argument 1 of 'dma2_init' discards 'volatile' qualifier from pointer target type [-Wdiscarded-qualifiers]
+   30 |         dma2_init(sent_msg);
+      |                   ^~~~~~~~
+In file included from ../Src/main.c:20:
+../Inc/dma.h:12:22: note: expected 'char *' but argument is of type 'volatile char *'
+   12 | void dma2_init(char* msg);
+      |                ~~~~~~^~~
+../Src/uart.c: In function 'USART1_IRQHandler':
+../Src/uart.c:236:27: warning: passing argument 1 of 'dma4_init' discards 'volatile' qualifier from pointer target type [-Wdiscarded-qualifiers]
+  236 |                 dma4_init(rcv_msg);
+      |                           ^~~~~~~
+In file included from ../Src/uart.c:13:
+../Inc/dma.h:11:22: note: expected 'char *' but argument is of type 'volatile char *'
+   11 | void dma4_init(char* msg);
+      |                ~~~~~~^~~
+arm-none-eabi-gcc -o "dma.elf" @"objects.list"   -mcpu=cortex-m0 -T"C:\Users\busilam\OneDrive - Bertrandt AG\Desktop\STM32_Internship\Cosmin\dma\STM32F070RBTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="dma.map" -Wl,--gc-sections -static -L"C:\Users\busilam\Cosmin\Traingings\STM32_Bare_Metal\STM32Cube_FW_F0_V1.10.0\Drivers\CMSIS\Include" -L"C:\Users\busilam\Cosmin\Traingings\STM32_Bare_Metal\STM32Cube_FW_F0_V1.10.0\Drivers\CMSIS\Device\ST\STM32F0xx\Include" --specs=nano.specs -mfloat-abi=soft -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+Finished building target: dma.elf
+ 
+arm-none-eabi-size  dma.elf 
+arm-none-eabi-objdump -h -S dma.elf  > "dma.list"
+   text	   data	    bss	    dec	    hex	filename
+   1884	    100	   1676	   3660	    e4c	dma.elf
+Finished building: default.size.stdout
+ 
+Finished building: dma.list
+ 

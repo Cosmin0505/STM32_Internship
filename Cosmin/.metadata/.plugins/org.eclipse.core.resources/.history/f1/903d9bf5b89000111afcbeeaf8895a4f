@@ -1,0 +1,16 @@
+/*
+ * dma.h
+ *
+ *  Created on: Aug 5, 2026
+ *      Author: busilam
+ */
+
+#ifndef DMA_H_
+#define DMA_H_
+
+void dma_init(void);
+
+#define DMAEN	(1U << 0) /* Enable DMA on RCC AHB Bus */
+#define DIR		(1U << 4) /* Set DIR: read from memory */
+
+#endif /* DMA_H_ */

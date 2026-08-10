@@ -1,0 +1,14 @@
+C:/Users/savav/STM32Cube/Repository/STM32Cube_FW_F0_V1.11.0/Drivers/CMSIS/Include/core_cm0.h:623:22:__NVIC_EnableIRQ	16	static
+../Src/uart.c:19:6:uart2_init	8	static
+../Src/uart.c:74:6:uart1_init	8	static
+../Src/uart.c:129:6:uart2_write	16	static
+../Src/uart.c:136:6:uart2_write_string	24	static
+../Src/uart.c:142:6:uart2_read	16	static
+../Src/uart.c:149:6:uart1_write	16	static
+../Src/uart.c:157:6:uart1_read	16	static
+../Src/uart.c:164:6:transmit	128	static
+../Src/uart.c:188:6:transmit_debug	24	static
+../Src/uart.c:198:8:receive	32	static
+../Src/uart.c:219:6:USART2_IRQHandler	8	static
+../Src/uart.c:228:6:USART1_IRQHandler	24	static
+../Src/uart.c:251:6:build_message	24	static

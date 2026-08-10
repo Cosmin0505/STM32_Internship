@@ -1,0 +1,25 @@
+/*
+ * dma.h
+ *
+ *  Created on: Aug 5, 2026
+ *      Author: busilam
+ */
+
+#ifndef DMA_H_
+#define DMA_H_
+
+void dma2_init(char* msg);
+void dma2_init(char* msg);
+void dma_write(char *msg);
+
+#define DMAEN	(1U << 0) /* Enable DMA on RCC AHB Bus */
+#define DIR		(1U << 4) /* Set DIR: read from memory */
+#define CIRC	(1U << 5) /* Set CIRC: circular mode */
+#define MIRC	(1U << 7) /* Memory increment mode */
+#define TCIF4	(1U << 13) /* Interrupt on transfer complete channel 4 */
+#define EN		(1U << 0) /* Enable DMA Channel 4 */
+#define CGIF4	(1U << 12) /* Clear global flags */
+#define CTCIF4	(1U << 13) /* Clear transmission complete interrput flag for channel 4 */
+#define TCIE	(1U << 1) /* Interrupt enable on tramission complete */
+#define DMAT	(1U << 7) /* Bit to enable DMA transmitter */
+#endif /* DMA_H_ */

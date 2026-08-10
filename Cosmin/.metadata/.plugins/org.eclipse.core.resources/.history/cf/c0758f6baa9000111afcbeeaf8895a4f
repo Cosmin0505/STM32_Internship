@@ -1,0 +1,17 @@
+/*
+ * dma.c
+ *
+ *  Created on: Aug 5, 2026
+ *      Author: busilam
+ */
+
+
+#include "stm32f070xb.h"
+
+/* Initialize DMA peripheric */
+void dma_init(void) {
+	/* Enable clock register for DMA */
+	RCC->AHBENR |= RCC_AHBENR
+}
+
+
