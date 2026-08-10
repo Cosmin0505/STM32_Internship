@@ -1,0 +1,10 @@
+../Drivers/CMSIS/Include/core_cm4.h:1688:22:__NVIC_EnableIRQ	16	static
+../Core/Inc/uart4.c:35:6:uart4_init	8	static
+../Core/Inc/uart4.c:85:6:dma2_init	4	static
+../Core/Inc/uart4.c:133:6:uart4_transmit_byte	16	static
+../Core/Inc/uart4.c:141:6:uart4_receive_byte	16	static
+../Core/Inc/uart4.c:153:6:uart4_transmit_string	24	static
+../Core/Inc/uart4.c:162:6:uart4_tx_busy	4	static
+../Core/Inc/uart4.c:167:6:uart4_write	24	static
+../Core/Inc/uart4.c:196:6:uart4_rx_interrupt_handler	8	static
+../Core/Inc/uart4.c:246:6:UART4_IRQHandler	8	static
