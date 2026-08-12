@@ -1,0 +1,14 @@
+../Core/Src/gyro.c:11:6:gyro_delay_ms	16	static
+../Core/Src/gyro.c:24:6:spi1_gpio_init	4	static
+../Core/Src/gyro.c:56:6:spi1_init	4	static
+../Core/Src/gyro.c:80:9:spi1_transfer	16	static
+../Core/Src/gyro.c:91:6:spi1_wait_idle	4	static
+../Core/Src/gyro.c:101:9:gyro_read_reg	24	static
+../Core/Src/gyro.c:113:6:gyro_write_reg	16	static
+../Core/Src/gyro.c:122:6:gyro_init	8	static
+../Core/Src/gyro.c:131:6:gyro_wait_data_ready	8	static
+../Core/Src/gyro.c:140:9:gyro_calibrate	64	static
+../Core/Src/gyro.c:199:6:gyro_read_multi	32	static
+../Core/Src/gyro.c:211:6:gyro_read_xyz_mdps	32	static
+../Core/Src/gyro.c:223:6:gyro_read_xyz	32	static
+../Core/Src/gyro.c:233:9:raw_to_mdps	16	static
