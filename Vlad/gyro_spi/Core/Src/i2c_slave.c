@@ -9,6 +9,7 @@
 #include "usart1.h"
 #include "stm32f3xx.h"
 #include <string.h>
+#include <stdio.h>
 
 static const char HEX[] = "0123456789ABCDEF";
 
@@ -21,7 +22,7 @@ static uint8_t g_seq;
 
 volatile uint32_t g_i2c_berr, g_i2c_arlo, g_i2c_ovr;
 
-static char     g_dump_line[64];    /* static: outlives the transfer */
+static char     g_dump_line[64];
 static uint8_t  g_dump_pkt[GYRO_PACKET_LEN];
 
 static uint8_t crc8(const uint8_t *p, uint32_t n)
@@ -36,6 +37,13 @@ static uint8_t crc8(const uint8_t *p, uint32_t n)
 		}
 	}
 	return crc;
+}
+
+static int32_t get_le32(const uint8_t *p)
+{
+    uint32_t u =  (uint32_t)p[0]        | ((uint32_t)p[1] <<  8)
+               | ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
+    return (int32_t)u;
 }
 
 static void put_le32(uint8_t *dst, int32_t v)
@@ -54,7 +62,7 @@ void i2c1_gpio_init(void)
 	(void)RCC->AHBENR;
 
 	/* Configure pins PB8 and PB9 */
-	GPIOB->MODER &= ((3U << (8 * 2)) | (3U << (9 * 2)));
+	GPIOB->MODER &= ~((3U << (8 * 2)) | (3U << (9 * 2)));
 	GPIOB->MODER |= ((2U << (8 * 2)) | (2U << (9 * 2)));
 
 	GPIOB->OTYPER |= (1U << 8) | (1U << 9);
@@ -106,9 +114,10 @@ void i2c_slave_init(void)
 
 void i2c_slave_publish(int32_t x, int32_t y, int32_t z, uint8_t status)
 {
-	NVIC_DisableIRQ(I2C1_EV_IRQn);
-	__DSB();
-	__ISB();
+
+	// Check if interrupts were enabled before
+	uint32_t primask = __get_PRIMASK();
+	__disable_irq();
 
 	g_staging[0] = 0xA5u;
 	g_staging[1] = ++g_seq;
@@ -117,8 +126,13 @@ void i2c_slave_publish(int32_t x, int32_t y, int32_t z, uint8_t status)
 	put_le32(&g_staging[7], y);
 	put_le32(&g_staging[11], z);
 	g_staging[15] = crc8(g_staging, 15u);
+	__DMB();
 
-	NVIC_EnableIRQ(I2C1_EV_IRQn);
+	//If interrupts were enabled before, re-enable them
+	if(primask == 0U)
+	{
+		__enable_irq();
+	}
 }
 
 static void i2c_take_snapshot(void)
@@ -137,6 +151,63 @@ static void i2c_handle_command(void)
 	g_rx_idx = 0u;
 }
 
+//void I2C1_EV_IRQHandler(void)
+//{
+//	uint32_t isr = I2C1->ISR;
+//
+//	if(isr & I2C_ISR_ADDR)
+//	{
+//		if(isr & I2C_ISR_DIR)
+//		{
+//			I2C1->ISR = I2C_ISR_TXE;
+//
+//			if(g_rx_idx > 0u) {
+//				i2c_handle_command();
+//			}
+//
+//			i2c_take_snapshot();
+//		}
+//		else
+//		{
+//			g_rx_idx = 0u;
+//		}
+//
+//		I2C1->ICR = I2C_ICR_ADDRCF;
+//		isr = I2C1->ISR;
+//	}
+//
+//	if(isr & I2C_ISR_RXNE)
+//	{
+//		uint8_t b = (uint8_t)I2C1->RXDR;
+//		if(g_rx_idx < sizeof g_rx_buf){
+//			g_rx_buf[g_rx_idx++] = b;
+//		}
+//	}
+//
+//	if(isr & I2C_ISR_TXIS){
+//		uint8_t b = 0xFFu;
+//		if(g_tx_idx < GYRO_PACKET_LEN)
+//		{
+//			b = g_tx_buf[g_tx_idx++];
+//		}
+//		I2C1->TXDR = b;
+//	}
+//
+//	if(isr & I2C_ISR_NACKF)
+//	{
+//		I2C1->ICR = I2C_ICR_NACKCF;
+//	}
+//
+//	if(isr & I2C_ISR_STOPF)
+//	{
+//		I2C1->ICR = I2C_ICR_STOPCF;
+//		if(g_rx_idx > 0u)
+//		{
+//			i2c_handle_command();
+//		}
+//	}
+//}
+
 void I2C1_EV_IRQHandler(void)
 {
 	uint32_t isr = I2C1->ISR;
@@ -145,40 +216,17 @@ void I2C1_EV_IRQHandler(void)
 	{
 		if(isr & I2C_ISR_DIR)
 		{
-			I2C1->ISR |= I2C_ISR_TXE;
-
-			if(g_rx_idx > 0u) {
-				i2c_handle_command();
-			}
-
-			i2c_take_snapshot();
-		}
-		else
-		{
-			g_rx_idx = 0u;
+			I2C1->ISR = I2C_ISR_TXE;
 		}
 
 		I2C1->ICR = I2C_ICR_ADDRCF;
 		isr = I2C1->ISR;
 	}
 
-	if(isr & I2C_ISR_RXNE)
+	if(isr & I2C_ISR_TXIS)
 	{
-		uint8_t b = (uint8_t)I2C1->RXDR;
-		if(g_rx_idx < sizeof g_rx_buf){
-			g_rx_buf[g_rx_idx++] = b;
-		}
+		I2C1->TXDR = I2C_TEST_BYTE;
 	}
-
-	if(isr & I2C_ISR_TXIS){
-		uint8_t b = 0xFFu;
-		if(g_tx_idx < GYRO_PACKET_LEN)
-		{
-			b = g_tx_buf[g_tx_idx++];
-		}
-		I2C1->TXDR = b;
-	}
-
 	if(isr & I2C_ISR_NACKF)
 	{
 		I2C1->ICR = I2C_ICR_NACKCF;
@@ -187,10 +235,6 @@ void I2C1_EV_IRQHandler(void)
 	if(isr & I2C_ISR_STOPF)
 	{
 		I2C1->ICR = I2C_ICR_STOPCF;
-		if(g_rx_idx > 0u)
-		{
-			i2c_handle_command();
-		}
 	}
 }
 
@@ -233,6 +277,19 @@ static void hex_line(const uint8_t *p, uint32_t len, char *out)
     out[o]   = '\0';
 }
 
+//void dump_packet_hex(void)
+//{
+//    /* USART1_TX is normally DMA1 Channel 4 on the F303 — adjust to match
+//     * your dma1_init(). Skip the dump if the last one is still going.  */
+//    if ((DMA1_Channel4->CCR & DMA_CCR_EN) && (DMA1_Channel4->CNDTR != 0u)) {
+//        return;
+//    }
+//
+//    i2c_slave_get_packet(g_dump_pkt);
+//    hex_line(g_dump_pkt, GYRO_PACKET_LEN, g_dump_line);
+//    usart1_write(g_dump_line);
+//}
+
 void dump_packet_hex(void)
 {
     /* USART1_TX is normally DMA1 Channel 4 on the F303 — adjust to match
@@ -242,6 +299,18 @@ void dump_packet_hex(void)
     }
 
     i2c_slave_get_packet(g_dump_pkt);
-    hex_line(g_dump_pkt, GYRO_PACKET_LEN, g_dump_line);
-    usart1_write(g_dump_line);
+
+	int crc_ok = (crc8(g_dump_pkt, 15u) == g_dump_pkt[15]);
+	int hdr_ok = (g_dump_pkt[0] == 0xA5u);
+
+	(void)snprintf(g_dump_line, sizeof g_dump_line,
+				   "%s seq=%3u X=%7ld Y=%7ld Z=%7ld %s\r\n",
+				   hdr_ok ? "OK " : "HDR",
+				   (unsigned)g_dump_pkt[1],
+				   (long)get_le32(&g_dump_pkt[3]),
+				   (long)get_le32(&g_dump_pkt[7]),
+				   (long)get_le32(&g_dump_pkt[11]),
+				   crc_ok ? "crc-ok" : "CRC-BAD");
+
+	usart1_write(g_dump_line);
 }

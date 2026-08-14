@@ -32,46 +32,52 @@ gyro_bias_t g_bias = { 0, 0, 0, 0 };
 int main(void)
 {
 	clock_init();
-	usart1_init();
-	uart4_init();
-	dma1_init();
-	dma2_init();
-	spi1_gpio_init();
-	spi1_init();
-
-	id = gyro_read_reg(L3GD20_WHO_AM_I);
-	if(id != 0xD4u && id != 0xD3u){
-		while(1)
-		{
-			__NOP();
-		}
-	}
-
-	gyro_init();
-
-	do {
-		g_cal_ok = gyro_calibrate();
-	} while (!g_cal_ok);
-
-	g_bias_mdps_x = raw_to_mdps(g_bias.x);
-	g_bias_mdps_y = raw_to_mdps(g_bias.y);
-	g_bias_mdps_z = raw_to_mdps(g_bias.z);
-
-	i2c_slave_publish(0, 0, 0, GYRO_ST_CAL_VALID);
 
 	i2c_slave_init();
 
+//	usart1_init();
+//	uart4_init();
+//	dma1_init();
+//	dma2_init();
+//	spi1_gpio_init();
+//	spi1_init();
+
+//	id = gyro_read_reg(L3GD20_WHO_AM_I);
+//	if(id != 0xD4u && id != 0xD3u){
+//		while(1)
+//		{
+//			__NOP();
+//		}
+//	}
+//
+//	gyro_init();
+//
+//	i2c_slave_publish(0, 0, 0, 0u);
+//	i2c_slave_init();
+//
+//	do {
+//		g_cal_ok = gyro_calibrate();
+//	} while (!g_cal_ok);
+//
+//	g_bias_mdps_x = raw_to_mdps(g_bias.x);
+//	g_bias_mdps_y = raw_to_mdps(g_bias.y);
+//	g_bias_mdps_z = raw_to_mdps(g_bias.z);
+//
+//	i2c_slave_publish(0, 0, 0, GYRO_ST_CAL_VALID);
+
 	while(1)
 	{
-		gyro_wait_data_ready();
-		gyro_read_xyz_mdps(&g_mdps_x, &g_mdps_y, &g_mdps_z);
+//		gyro_wait_data_ready();
+//		gyro_read_xyz_mdps(&g_mdps_x, &g_mdps_y, &g_mdps_z);
+//
+//		i2c_slave_publish(g_mdps_x, g_mdps_y, g_mdps_z, GYRO_ST_CAL_VALID);
+//
+//	    if (++dump_div >= 19u) {
+//	        dump_div = 0u;
+//	        dump_packet_hex();
+//	    }
 
-		i2c_slave_publish(g_mdps_x, g_mdps_y, g_mdps_z, GYRO_ST_CAL_VALID);
-
-	    if (++dump_div >= 19u) {
-	        dump_div = 0u;
-	        dump_packet_hex();
-	    }
+		__WFI();
 	}
 
 }

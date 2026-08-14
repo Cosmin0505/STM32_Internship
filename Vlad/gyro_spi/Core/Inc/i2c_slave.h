@@ -11,6 +11,7 @@
 #include <stdint.h>
 
 #define I2C_SLAVE_ADDR_7BIT 0x42u
+#define I2C_TEST_BYTE 0xA5u
 #define GYRO_PACKET_LEN 16u
 
 #define GYRO_ST_CAL_VALID     (1u << 0)
