@@ -23,13 +23,14 @@ int main(void) {
 
 	gpio_led_init();
 	gpio_button_init();
+
 	gpio_i2c2_init_master();
-	gpio_i2c1_init_slave();
 	i2c2_init();
-	i2c1_init();
+
 	exti_init();
 	/* Main loop */
     while(1) {
+    	__WFI();
     }
 
     return 0;
