@@ -11,40 +11,11 @@
 #include <string.h>
 #include <stdio.h>
 
-static const char HEX[] = "0123456789ABCDEF";
-
 static uint8_t g_staging[GYRO_PACKET_LEN];
 static uint8_t g_tx_buf[GYRO_PACKET_LEN];
-static volatile uint8_t g_tx_idx;
-static uint8_t g_rx_buf[16];
-static volatile uint8_t g_rx_idx;
-static uint8_t g_seq;
+static volatile uint8_t g_tx_index;
 
 volatile uint32_t g_i2c_berr, g_i2c_arlo, g_i2c_ovr;
-
-static char     g_dump_line[64];
-static uint8_t  g_dump_pkt[GYRO_PACKET_LEN];
-
-static uint8_t crc8(const uint8_t *p, uint32_t n)
-{
-	uint8_t crc = 0x00u;
-
-	while(n--)
-	{
-		crc ^= *p++;
-		for(uint8_t i = 0u; i < 8u; i++){
-			crc = (uint8_t)((crc & 0x80u) ? ((crc << 1) ^ 0x07u) : (crc << 1));
-		}
-	}
-	return crc;
-}
-
-static int32_t get_le32(const uint8_t *p)
-{
-    uint32_t u =  (uint32_t)p[0]        | ((uint32_t)p[1] <<  8)
-               | ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
-    return (int32_t)u;
-}
 
 static void put_le32(uint8_t *dst, int32_t v)
 {
@@ -112,20 +83,17 @@ void i2c_slave_init(void)
 	NVIC_EnableIRQ(I2C1_ER_IRQn);
 }
 
-void i2c_slave_publish(int32_t x, int32_t y, int32_t z, uint8_t status)
+void i2c_slave_publish(int32_t x, int32_t y, int32_t z)
 {
 
 	// Check if interrupts were enabled before
 	uint32_t primask = __get_PRIMASK();
 	__disable_irq();
 
-	g_staging[0] = 0xA5u;
-	g_staging[1] = ++g_seq;
-	g_staging[2] = status;
-	put_le32(&g_staging[3], x);
-	put_le32(&g_staging[7], y);
-	put_le32(&g_staging[11], z);
-	g_staging[15] = crc8(g_staging, 15u);
+	put_le32(&g_staging[0], x);
+	put_le32(&g_staging[4], y);
+	put_le32(&g_staging[8], z);
+
 	__DMB();
 
 	//If interrupts were enabled before, re-enable them
@@ -138,75 +106,8 @@ void i2c_slave_publish(int32_t x, int32_t y, int32_t z, uint8_t status)
 static void i2c_take_snapshot(void)
 {
 	memcpy(g_tx_buf, g_staging, GYRO_PACKET_LEN);
-	g_tx_idx = 0u;
+	g_tx_index = 0u;
 }
-
-static void i2c_handle_command(void)
-{
-	if(g_rx_idx >= 1){
-		switch(g_rx_buf[0]){
-		case 0x01u: default: break;
-		}
-	}
-	g_rx_idx = 0u;
-}
-
-//void I2C1_EV_IRQHandler(void)
-//{
-//	uint32_t isr = I2C1->ISR;
-//
-//	if(isr & I2C_ISR_ADDR)
-//	{
-//		if(isr & I2C_ISR_DIR)
-//		{
-//			I2C1->ISR = I2C_ISR_TXE;
-//
-//			if(g_rx_idx > 0u) {
-//				i2c_handle_command();
-//			}
-//
-//			i2c_take_snapshot();
-//		}
-//		else
-//		{
-//			g_rx_idx = 0u;
-//		}
-//
-//		I2C1->ICR = I2C_ICR_ADDRCF;
-//		isr = I2C1->ISR;
-//	}
-//
-//	if(isr & I2C_ISR_RXNE)
-//	{
-//		uint8_t b = (uint8_t)I2C1->RXDR;
-//		if(g_rx_idx < sizeof g_rx_buf){
-//			g_rx_buf[g_rx_idx++] = b;
-//		}
-//	}
-//
-//	if(isr & I2C_ISR_TXIS){
-//		uint8_t b = 0xFFu;
-//		if(g_tx_idx < GYRO_PACKET_LEN)
-//		{
-//			b = g_tx_buf[g_tx_idx++];
-//		}
-//		I2C1->TXDR = b;
-//	}
-//
-//	if(isr & I2C_ISR_NACKF)
-//	{
-//		I2C1->ICR = I2C_ICR_NACKCF;
-//	}
-//
-//	if(isr & I2C_ISR_STOPF)
-//	{
-//		I2C1->ICR = I2C_ICR_STOPCF;
-//		if(g_rx_idx > 0u)
-//		{
-//			i2c_handle_command();
-//		}
-//	}
-//}
 
 void I2C1_EV_IRQHandler(void)
 {
@@ -217,16 +118,23 @@ void I2C1_EV_IRQHandler(void)
 		if(isr & I2C_ISR_DIR)
 		{
 			I2C1->ISR = I2C_ISR_TXE;
+
+			i2c_take_snapshot();
 		}
 
 		I2C1->ICR = I2C_ICR_ADDRCF;
 		isr = I2C1->ISR;
 	}
 
-	if(isr & I2C_ISR_TXIS)
-	{
-		I2C1->TXDR = I2C_TEST_BYTE;
+	if(isr & I2C_ISR_TXIS){
+		uint8_t b = 0xFFu;
+		if(g_tx_index < GYRO_PACKET_LEN)
+		{
+			b = g_tx_buf[g_tx_index++];
+		}
+		I2C1->TXDR = b;
 	}
+
 	if(isr & I2C_ISR_NACKF)
 	{
 		I2C1->ICR = I2C_ICR_NACKCF;
@@ -257,60 +165,4 @@ void I2C1_ER_IRQHandler(void)
 		I2C1->ICR = I2C_ICR_OVRCF;
 		g_i2c_ovr++;
 	}
-}
-
-void i2c_slave_get_packet(uint8_t *dst)
-{
-	memcpy(dst, g_staging, GYRO_PACKET_LEN);
-}
-
-static void hex_line(const uint8_t *p, uint32_t len, char *out)
-{
-    uint32_t o = 0u;
-    for (uint32_t i = 0u; i < len; i++) {
-        out[o++] = HEX[(p[i] >> 4) & 0x0Fu];
-        out[o++] = HEX[ p[i]       & 0x0Fu];
-        out[o++] = ' ';
-    }
-    out[o++] = '\r';
-    out[o++] = '\n';
-    out[o]   = '\0';
-}
-
-//void dump_packet_hex(void)
-//{
-//    /* USART1_TX is normally DMA1 Channel 4 on the F303 — adjust to match
-//     * your dma1_init(). Skip the dump if the last one is still going.  */
-//    if ((DMA1_Channel4->CCR & DMA_CCR_EN) && (DMA1_Channel4->CNDTR != 0u)) {
-//        return;
-//    }
-//
-//    i2c_slave_get_packet(g_dump_pkt);
-//    hex_line(g_dump_pkt, GYRO_PACKET_LEN, g_dump_line);
-//    usart1_write(g_dump_line);
-//}
-
-void dump_packet_hex(void)
-{
-    /* USART1_TX is normally DMA1 Channel 4 on the F303 — adjust to match
-     * your dma1_init(). Skip the dump if the last one is still going.  */
-    if ((DMA1_Channel4->CCR & DMA_CCR_EN) && (DMA1_Channel4->CNDTR != 0u)) {
-        return;
-    }
-
-    i2c_slave_get_packet(g_dump_pkt);
-
-	int crc_ok = (crc8(g_dump_pkt, 15u) == g_dump_pkt[15]);
-	int hdr_ok = (g_dump_pkt[0] == 0xA5u);
-
-	(void)snprintf(g_dump_line, sizeof g_dump_line,
-				   "%s seq=%3u X=%7ld Y=%7ld Z=%7ld %s\r\n",
-				   hdr_ok ? "OK " : "HDR",
-				   (unsigned)g_dump_pkt[1],
-				   (long)get_le32(&g_dump_pkt[3]),
-				   (long)get_le32(&g_dump_pkt[7]),
-				   (long)get_le32(&g_dump_pkt[11]),
-				   crc_ok ? "crc-ok" : "CRC-BAD");
-
-	usart1_write(g_dump_line);
 }

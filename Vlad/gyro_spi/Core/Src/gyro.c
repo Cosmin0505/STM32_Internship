@@ -8,6 +8,8 @@
 #include "stm32f3xx.h"
 #include "gyro.h"
 
+extern gyro_bias_t g_bias;
+
 void gyro_delay_ms(uint32_t ms)
 {
     SysTick->LOAD = (SystemCoreClock / 1000U) - 1U;
@@ -133,7 +135,7 @@ void gyro_wait_data_ready(void)
 	while((gyro_read_reg(L3GD20_STATUS_REG) & L3GD20_STATUS_ZYXDA) == 0U);
 }
 
-extern gyro_bias_t g_bias;
+
 
 /* Returns 1 on success, 0 if the board was not held still enough.
  * The board MUST be stationary for the whole call (~1.5 s).             */
@@ -217,7 +219,6 @@ void gyro_read_xyz_mdps(volatile int32_t *x, volatile int32_t *y, volatile int32
     *y = raw_to_mdps((int32_t)ry - g_bias.y);
     *z = raw_to_mdps((int32_t)rz - g_bias.z);
 }
-
 
 
 void gyro_read_xyz(int16_t *x, int16_t *y, int16_t *z)
