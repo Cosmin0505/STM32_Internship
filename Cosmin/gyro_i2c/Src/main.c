@@ -21,13 +21,17 @@
 
 int main(void) {
 
+	/* Initialize LED */
 	gpio_led_init();
+	/* Initialize user button */
 	gpio_button_init();
-
+	/* Initialize GPIO for I2C2 */
 	gpio_i2c2_init_master();
+	/* Initialize I2C2 */
 	i2c2_init();
-
+	/* Initialize EXTI */
 	exti_init();
+
 	/* Main loop */
     while(1) {
     	__WFI();

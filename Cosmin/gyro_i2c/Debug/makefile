@@ -1,6 +1,6 @@
 ################################################################################
 # Automatically-generated file. Do not edit!
-# Toolchain: GNU Tools for STM32 (10.3-2021.10)
+# Toolchain: GNU Tools for STM32 (14.3.rel1)
 ################################################################################
 
 -include ../makefile.init
@@ -59,8 +59,8 @@ all: main-build
 main-build: gyro_i2c.elf secondary-outputs
 
 # Tool invocations
-gyro_i2c.elf gyro_i2c.map: $(OBJS) $(USER_OBJS) C:\Users\savav\stm32f3discovery\copie_cosmin\STM32_Internship\Cosmin\gyro_i2c\STM32F070RBTX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-gcc -o "gyro_i2c.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m0 -T"C:\Users\savav\stm32f3discovery\copie_cosmin\STM32_Internship\Cosmin\gyro_i2c\STM32F070RBTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="gyro_i2c.map" -Wl,--gc-sections -static -L"C:\Users\busilam\Cosmin\Traingings\STM32_Bare_Metal\STM32Cube_FW_F0_V1.10.0\Drivers\CMSIS\Include" -L"C:\Users\busilam\Cosmin\Traingings\STM32_Bare_Metal\STM32Cube_FW_F0_V1.10.0\Drivers\CMSIS\Device\ST\STM32F0xx\Include" --specs=nano.specs -mfloat-abi=soft -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+gyro_i2c.elf gyro_i2c.map: $(OBJS) $(USER_OBJS) C:\Users\busilam\Cosmin\Traingings\STM32_Internship\Cosmin\gyro_i2c\STM32F070RBTX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-gcc -o "gyro_i2c.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m0 -T"C:\Users\busilam\Cosmin\Traingings\STM32_Internship\Cosmin\gyro_i2c\STM32F070RBTX_FLASH.ld" --specs=nosys.specs -Wl,-Map="gyro_i2c.map" -Wl,--gc-sections -static -L"C:\Users\busilam\Cosmin\Traingings\STM32_Bare_Metal\STM32Cube_FW_F0_V1.10.0\Drivers\CMSIS\Include" -L"C:\Users\busilam\Cosmin\Traingings\STM32_Bare_Metal\STM32Cube_FW_F0_V1.10.0\Drivers\CMSIS\Device\ST\STM32F0xx\Include" --specs=nano.specs -mfloat-abi=soft -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 
