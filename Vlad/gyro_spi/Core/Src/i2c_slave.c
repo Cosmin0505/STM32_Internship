@@ -90,6 +90,7 @@ void i2c_slave_publish(int32_t x, int32_t y, int32_t z)
 	uint32_t primask = __get_PRIMASK();
 	__disable_irq();
 
+	/* Convert x/y/z values into little-endian and store them inside staging buffer  */
 	put_le32(&g_staging[0], x);
 	put_le32(&g_staging[4], y);
 	put_le32(&g_staging[8], z);
@@ -109,25 +110,34 @@ static void i2c_take_snapshot(void)
 	g_tx_index = 0u;
 }
 
+
+/* Handles I2C1 events */
 void I2C1_EV_IRQHandler(void)
 {
 	uint32_t isr = I2C1->ISR;
 
+	/* Handle an address match from the master */
 	if(isr & I2C_ISR_ADDR)
 	{
+		/* DIR bit set means the master is trying to read */
 		if(isr & I2C_ISR_DIR)
 		{
+
+			/* Prepare snapshot and flush any existing bytes in the transmit register */
 			I2C1->ISR = I2C_ISR_TXE;
 
 			i2c_take_snapshot();
 		}
 
+		/* Clear address flag and refresh ISR */
 		I2C1->ICR = I2C_ICR_ADDRCF;
 		isr = I2C1->ISR;
 	}
 
+
+	/* Send next byte is the transmit register is ready */
 	if(isr & I2C_ISR_TXIS){
-		uint8_t b = 0xFFu;
+		uint8_t b = 0xFFu; // required if the packet length runs out
 		if(g_tx_index < GYRO_PACKET_LEN)
 		{
 			b = g_tx_buf[g_tx_index++];
@@ -146,20 +156,26 @@ void I2C1_EV_IRQHandler(void)
 	}
 }
 
+/* Handles I2C error events and counts them */
 void I2C1_ER_IRQHandler(void)
 {
 	uint32_t isr = I2C1->ISR;
 
+	/* Invalid start/stop condition detected */
 	if(isr & I2C_ISR_BERR)
 	{
 		I2C1->ICR = I2C_ICR_BERRCF;
 		g_i2c_berr++;
 	}
+
+	/* Arbitration error */
 	if(isr & I2C_ISR_ARLO)
 	{
 		I2C1->ICR = I2C_ICR_ARLOCF;
 		g_i2c_arlo++;
 	}
+
+	/* Overrun or underrun error */
 	if(isr & I2C_ISR_OVR)
 	{
 		I2C1->ICR = I2C_ICR_OVRCF;

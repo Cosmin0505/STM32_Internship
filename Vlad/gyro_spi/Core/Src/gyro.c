@@ -79,59 +79,98 @@ void spi1_init(void)
 	SPI1->CR1 |= SPI_CR1_SPE;
 }
 
+
+/* Transmits one byte over SPI1 and returns the simultaneously received byte */
 uint8_t spi1_transfer(uint8_t tx)
 {
+	/* Wait until the transmit register can receive data */
 	while((SPI1->SR & SPI_SR_TXE) == 0U);
 
+	/* Store the byte to send inside the data register */
 	*(volatile uint8_t *)&SPI1->DR = tx;
 
+	/* Wait until received byte is available */
 	while((SPI1->SR & SPI_SR_RXNE) == 0U);
 
+	/* Return the received byte */
 	return *(volatile uint8_t *)&SPI1->DR;
 }
 
+
+/* Waits for SPI1 to finish and clears unread received data */
 void spi1_wait_idle(void)
 {
+	/* Wait for transmit register to be empty */
 	while((SPI1->SR & SPI_SR_FTLVL) != 0U);
+
+	/* Wait until SPI1 is no longer busy */
 	while((SPI1->SR & SPI_SR_BSY) != 0U);
+
+	/* Clear any unread data from the receive register */
 	while((SPI1->SR & SPI_SR_FRLVL) != 0U)
 	{
 		(void)*(volatile uint8_t *)&SPI1->DR;
 	}
 }
 
+/* Reads and returns data from a register. Used for reading gyroscope registers */
 uint8_t gyro_read_reg(uint8_t reg)
 {
 	uint8_t value;
+
+	/* Select the gyroscope by driving chip select low*/
 	GPIOE->BSRR = CS_RESET;
+
+	/* Send register address with read command bit set */
 	(void)spi1_transfer((reg & 0x3FU) | L3GD20_READ);
+
+	/* Send a dummy byte to receive the data from the register in return */
 	value = spi1_transfer(0xFFu);
+
+	/* Wait until the transfer is complete before driving CS high */
 	spi1_wait_idle();
 	GPIOE->BSRR = CS_SET;
 	return value;
 
 }
 
+/* Writes data to registers. Used for configuring the gyroscope, for writing inside its registers */
 void gyro_write_reg(uint8_t reg, uint8_t value)
 {
+	/* Select the gyroscope by driving chip select low */
 	GPIOE->BSRR = CS_RESET;
+
+	/* Send register address with write command bit set */
 	(void)spi1_transfer((reg & 0x3Fu) | L3GD20_WRITE);
+
+	/* Send the value that should be stored inside the previously selected register */
 	(void)spi1_transfer(value);
+
+	/* Wait until transfer is complete before driving CS high */
 	spi1_wait_idle();
 	GPIOE->BSRR = CS_SET;
 }
 
+
+/* Configures the gyroscope and allows it to stabilize */
 void gyro_init(void)
 {
+	/* Enable normal operation and measurement for all 3 axes */
 	gyro_write_reg(L3GD20_CTRL_REG1, 0x0Fu);
-	gyro_write_reg(L3GD20_CTRL_REG4, 0x80u);
-	gyro_write_reg(L3GD20_CTRL_REG5, 0x02u); // low-pass filter enable
 
+	gyro_write_reg(L3GD20_CTRL_REG4, 0x80u);
+
+	/* Enable low-pass filter */
+	gyro_write_reg(L3GD20_CTRL_REG5, 0x02u);
+
+	/* Wait for the gyroscope's output to stabilize */
 	gyro_delay_ms(250);
 }
 
+/* Blocks execution until new data is available for all three axes */
 void gyro_wait_data_ready(void)
 {
+	/* Poll the status register until all three axes' data-ready flags are set */
 	while((gyro_read_reg(L3GD20_STATUS_REG) & L3GD20_STATUS_ZYXDA) == 0U);
 }
 
@@ -198,39 +237,56 @@ uint8_t gyro_calibrate(void)
     return 1;
 }
 
+
+/* Read consecutive gyroscope registers using SPI auto-increment function */
 void gyro_read_multi(uint8_t start_reg, uint8_t *buf, uint8_t len)
 {
+	/* Select the gyroscope by driving CS low */
 	GPIOE->BSRR = CS_RESET;
+
+	/* Send the starting address, read request and auto-increment function */
 	(void)spi1_transfer((start_reg & 0x3Fu) | L3GD20_READ | L3GD20_AUTOINC);
+
+	/* Store the requested register bytes */
 	for(int i = 0; i < len; i++)
 	{
 		buf[i] = spi1_transfer(0xFFu);
 	}
+
+	/* Wait until transfer is complete before driving CS high */
 	spi1_wait_idle();
 	GPIOE->BSRR = CS_SET;
 }
 
+/* Read the bias-corrected data in mdps */
 void gyro_read_xyz_mdps(volatile int32_t *x, volatile int32_t *y, volatile int32_t *z)
 {
     int16_t rx, ry, rz;
+
+    /* Read the raw samples for each axis */
     gyro_read_xyz(&rx, &ry, &rz);
 
+    /* Subtract the measured bias and convert each raw sample to mdps */
     *x = raw_to_mdps((int32_t)rx - g_bias.x);
     *y = raw_to_mdps((int32_t)ry - g_bias.y);
     *z = raw_to_mdps((int32_t)rz - g_bias.z);
 }
 
-
+/* Reads the raw x/y/z gyroscope values */
 void gyro_read_xyz(int16_t *x, int16_t *y, int16_t *z)
 {
 	uint8_t b[6];
+
+	/* Read the bytes for all three axes in one transfer */
 	gyro_read_multi(L3GD20_OUT_X_L, b, 6);
 
+	/* Combine each little-endian byte pair into a signed value */
 	*x = (int16_t)(((uint16_t)b[1] << 8) | (uint16_t)b[0]);
 	*y = (int16_t)(((uint16_t)b[3] << 8) | (uint16_t)b[2]);
 	*z = (int16_t)(((uint16_t)b[5] << 8) | (uint16_t)b[4]);
 }
 
+/* Converts raw sample into milli-degrees per second */
 int32_t raw_to_mdps(int32_t raw)
 {
     /* +/-250 dps sensitivity is 8.75 mdps/LSB = 35/4 exactly.

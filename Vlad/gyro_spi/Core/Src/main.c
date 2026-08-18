@@ -39,6 +39,8 @@ int main(void)
 	spi1_gpio_init();
 	spi1_init();
 
+
+	/* Validate gyroscope device ID */
 	id = gyro_read_reg(L3GD20_WHO_AM_I);
 	if((id != 0xD4u) && (id != 0xD3u)){
 		while(1)
@@ -49,6 +51,8 @@ int main(void)
 
 	gyro_init();
 
+
+	/* Calibrate gyroscope and store its biases */
 	do {
 		g_cal_ok = gyro_calibrate();
 	} while (!g_cal_ok);
