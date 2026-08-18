@@ -1,0 +1,4 @@
+../Core/Src/led_gpio.c:10:6:gpiod_init	4	static
+../Core/Src/led_gpio.c:26:6:green_led	16	static
+../Core/Src/led_gpio.c:31:6:yellow_led	16	static
+../Core/Src/led_gpio.c:36:6:red_led	16	static
