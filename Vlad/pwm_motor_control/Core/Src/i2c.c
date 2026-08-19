@@ -46,14 +46,44 @@ void i2c1_master_init(void)
 			   | I2C_ICR_BERRCF
 			   | I2C_ICR_ARLOCF
 			   | I2C_ICR_OVRCF;
-	I2C1->CR1 |= I2C_CR1_RXIE
+	I2C1->CR1 |= I2C_CR1_TXIE
 			   | I2C_CR1_STOPIE
 			   | I2C_CR1_NACKIE
 			   | I2C_CR1_ERRIE;
 
 	I2C1->CR1 |= I2C_CR1_PE;
 
-	NVIC_SetPriority(I2C1_EV_IRQn, 1U);
-	NVIC_EnableIRQ(I2C1_EV_IRQn);
 }
 
+void i2c1_write(uint8_t addr, uint8_t *data, uint32_t length)
+{
+	while(I2C1->ISR & I2C_ISR_BUSY)
+	{
+
+	}
+
+	I2C1->ICR = I2C_ICR_STOPCF |
+			    I2C_ICR_NACKCF |
+				I2C_ICR_BERRCF |
+				I2C_ICR_ARLOCF |
+				I2C_ICR_OVRCF;
+
+	I2C1->CR2 = ((uint32_t) addr << 1U) |
+				(length << 16U) |
+				I2C_CR2_AUTOEND |
+				I2C_CR2_START;
+
+	for(int i = 0; i < length; i++)
+	{
+		while(!(I2C1->ISR & I2C_ISR_TXIS))
+		{
+		}
+		I2C1->TXDR = data[i];
+	}
+
+	while(!(I2C1->ISR & I2C_ISR_STOPF))
+	{
+	}
+
+	I2C1->ICR = I2C_ICR_STOPCF;
+}

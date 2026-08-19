@@ -25,15 +25,36 @@ void gpiod_init(void)
 
 void green_led(uint8_t input)
 {
-	GPIOD->ODR = (input << 9);
+	if(input == 0)
+	{
+		GPIOD->ODR &= ~(1 << 9);
+	}
+	else
+	{
+		GPIOD->ODR |= (1 << 9);
+	}
 }
 
 void yellow_led(uint8_t input)
 {
-	GPIOD->ODR = (input << 11);
+	if(input == 0)
+	{
+		GPIOD->ODR &= ~(1 << 11);
+	}
+	else
+	{
+		GPIOD->ODR |= (1 << 11);
+	}
 }
 
 void red_led(uint8_t input)
 {
-	GPIOD->ODR = (input << 13);
+	if(input == 0)
+	{
+		GPIOD->ODR &= ~(1 << 13);
+	}
+	else
+	{
+		GPIOD->ODR |= (1 << 13);
+	}
 }
