@@ -7,16 +7,27 @@
 #include "pwm.h"
 #include <stdio.h>
 
-#define KPH_CONSTANT 0.0135648
-#define ADC_DUTY_CYCLE_CONSTANT 0.2442
+#define PROPELLER_DIAMETER 60U
+
+#define PWM_MAX_COMPARE 999U
+#define ADC_SAMPLES 64U
+#define ADC_MAX_COUNTS 4095U
+
+#define MOTOR_START_DUTY_CYCLE 195U
+#define START_RPM 1200U
+#define FULL_DUTY_RPM 12000U
+
+static uint32_t estimate_target_rpm(uint32_t duty);
+static uint32_t update_rpm_model(uint32_t current_rpm, uint32_t target_rpm);
+static uint32_t rpm_to_speed(uint32_t rpm);
 
 uint32_t conv = 0;
 uint32_t speed = 0;
-uint32_t apb1_frequency = 0;
 uint32_t duty_cycle = 0;
-int32_t increment = 100;
-char rpm[15];
-char kph[15];
+uint32_t estimated_rpm = 0;
+
+char rpm[16] = {0};
+char kph[16] = {0};
 
 int main(void)
 {
@@ -36,48 +47,102 @@ int main(void)
 	while(1)
 	{
 		/* Compute an average value to reduce noise */
-		uint32_t sum = 0;
-		for (uint32_t i = 0; i < 10 * 4000; i++) {
+		uint32_t sum = 0U;
+		for (uint32_t i = 0; i < ADC_SAMPLES; i++) {
 			adc1_start_conversion();
 			sum += adc1_read();
 		}
-		conv = sum / 40000;
-		duty_cycle = conv * ADC_DUTY_CYCLE_CONSTANT;
+		conv = sum / ADC_SAMPLES;
+
+		duty_cycle = (uint32_t)(((uint64_t)conv * PWM_MAX_COMPARE
+					 + ADC_MAX_COUNTS / 2U)
+					 / ADC_MAX_COUNTS);
+		uint32_t duty_permille = (uint32_t)(((uint64_t)conv * 1000U
+					 + ADC_MAX_COUNTS / 2U)
+					 / ADC_MAX_COUNTS);
 		tim3_update_duty_cycle(duty_cycle);
-		speed = KPH_CONSTANT * conv;
+
+		uint32_t target_rpm = estimate_target_rpm(duty_permille);
+		estimated_rpm = update_rpm_model(estimated_rpm, target_rpm);
+
+		speed = rpm_to_speed(estimated_rpm);
+
 		if(conv < 800)
 		{
 			green_led(0U);
 			yellow_led(0U);
 			red_led(0U);
 		}
-		if(conv >= 800 && conv < 2000)
+		else if(conv < 2000)
 		{
 			green_led(1U);
 			yellow_led(0U);
 			red_led(0U);
 		}
-		if(conv >= 2000 && conv < 3500)
+		else if(conv < 3500)
 		{
 			green_led(1U);
 			yellow_led(1U);
 			red_led(0U);
 		}
-		if(conv >= 3500)
+		else(conv >= 3500)
 		{
 			green_led(1U);
 			yellow_led(1U);
 			red_led(1U);
 		}
 
-		sprintf(rpm, "%d    ", conv);
-		sprintf(kph, "%d    ", speed);
+		sprintf(rpm, "%5u    ", (unsigned int)estimated_rpm);
+		sprintf(kph, "%3u km/h ", (unsigned int)((speed +5U) / 10U));
 		lcd_sendcommand(0x85);
 		lcd_write(rpm);
+
 		lcd_sendcommand(0xC7);
 		lcd_write(kph);
 	}
 
 }
 
+static uint32_t estimate_target_rpm(uint32_t duty)
+{
+	if(duty < MOTOR_START_DUTY_CYCLE)
+	{
+		return 0;
+	}
 
+	uint32_t usable_duty = duty - MOTOR_START_DUTY_CYCLE;
+
+	uint32_t usable_duty_range = 1000U - MOTOR_START_DUTY_CYCLE;
+
+	uint32_t rpm_range = FULL_DUTY_RPM - START_RPM;
+
+	return START_RPM + (uint32_t)(((uint64_t)rpm_range * usable_duty
+			+ usable_duty_range / 2U) / usable_duty_range);
+}
+
+static uint32_t update_rpm_model(uint32_t current_rpm, uint32_t target_rpm)
+{
+	if(target_rpm > current_rpm)
+	{
+		uint32_t step = (target_rpm - current_rpm + 3U) / 4U;
+
+		return current_rpm + step;
+	}
+
+	if(target_rpm < current_rpm)
+	{
+		uint32_t step = (current_rpm - target_rpm + 7U) / 8U;
+
+		return current_rpm - step;
+	}
+
+	return current_rpm;
+}
+
+static uint32_t rpm_to_speed(uint32_t rpm)
+{
+	uint64_t numerator = (uint64_t)rpm * PROPELLER_DIAMETER
+						* 188496ULL;
+
+	return (uint32_t)((numerator + 50000000ULL) / 100000000ULL);
+}
