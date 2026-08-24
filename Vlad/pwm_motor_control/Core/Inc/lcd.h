@@ -24,8 +24,6 @@ void lcd_init(void);
 void lcd_sendcommand(uint8_t cmd);
 void lcd_senddata(uint8_t data);
 void lcd_write(char *s);
-void lcd_clear_rpm(void);
-void lcd_clear_kph(void);
 
 
 #endif /* INC_LCD_H_ */

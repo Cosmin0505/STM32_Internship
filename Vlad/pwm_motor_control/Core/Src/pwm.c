@@ -14,6 +14,7 @@ void tim3_gpio_init(void)
 	GPIOA->MODER &= ~(3U << (6 * 2));
 	GPIOA->MODER |= (2U << (6 * 2));
 
+	/* Select AF2 (TIM3_CH1) for PA6 */
 	GPIOA->AFR[0] &= ~(0xFU << (6 * 4));
 	GPIOA->AFR[0] |= (2U << (6 * 4));
 }
@@ -30,11 +31,14 @@ void tim3_init()
 	/* PWM frequency is ftim3 / ((PSC + 1) * (ARR + 1)) */
 	TIM3->ARR = 999;
 
+	/* Select PWM mode for TIM3_CH1 */
 	TIM3->CCMR1 &= ~(0xFU << 4);
 	TIM3->CCMR1 |= (6U << 4);
 
+	/* Enable pre-load to ensure safe duty cycle updates */
 	TIM3->CCMR1 |= TIM_CCMR1_OC1PE;
 
+	/* Enable CH1 output and TIM3 peripheral */
 	TIM3->CCER |= TIM_CCER_CC1E;
 	TIM3->CR1 |= TIM_CR1_CEN;
 }

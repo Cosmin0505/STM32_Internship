@@ -9,16 +9,16 @@
 
 #define PROPELLER_DIAMETER 60U
 
-#define PWM_MAX_COMPARE 999U
+#define PWM_MAX_COMPARE 1000U
 #define ADC_SAMPLES 64U
 #define ADC_MAX_COUNTS 4095U
 
+/* DC motor parameters */
 #define MOTOR_START_DUTY_CYCLE 195U
 #define START_RPM 1200U
 #define FULL_DUTY_RPM 12000U
 
 static uint32_t estimate_target_rpm(uint32_t duty);
-static uint32_t update_rpm_model(uint32_t current_rpm, uint32_t target_rpm);
 static uint32_t rpm_to_speed(uint32_t rpm);
 
 uint32_t conv = 0;
@@ -31,6 +31,7 @@ char kph[16] = {0};
 
 int main(void)
 {
+	/* Initialize peripherals */
 	clock_init();
 	gpiod_init();
 	adc1_init();
@@ -38,7 +39,7 @@ int main(void)
 	lcd_init();
 	tim3_init();
 
-
+	/* Print static text */
 	lcd_sendcommand(0x80);
 	lcd_write("RPM: ");
 	lcd_sendcommand(0xC0);
@@ -54,19 +55,19 @@ int main(void)
 		}
 		conv = sum / ADC_SAMPLES;
 
+		/* Convert ADC value to PWM duty cycle */
 		duty_cycle = (uint32_t)(((uint64_t)conv * PWM_MAX_COMPARE
 					 + ADC_MAX_COUNTS / 2U)
 					 / ADC_MAX_COUNTS);
-		uint32_t duty_permille = (uint32_t)(((uint64_t)conv * 1000U
-					 + ADC_MAX_COUNTS / 2U)
-					 / ADC_MAX_COUNTS);
+
 		tim3_update_duty_cycle(duty_cycle);
 
-		uint32_t target_rpm = estimate_target_rpm(duty_permille);
-		estimated_rpm = update_rpm_model(estimated_rpm, target_rpm);
+		estimated_rpm = estimate_target_rpm(duty_cycle);
 
 		speed = rpm_to_speed(estimated_rpm);
 
+
+		/* Indicate RPM ranges using LEDs */
 		if(conv < 800)
 		{
 			green_led(0U);
@@ -85,13 +86,14 @@ int main(void)
 			yellow_led(1U);
 			red_led(0U);
 		}
-		else(conv >= 3500)
+		else
 		{
 			green_led(1U);
 			yellow_led(1U);
 			red_led(1U);
 		}
 
+		/* Refresh LCD screen readings */
 		sprintf(rpm, "%5u    ", (unsigned int)estimated_rpm);
 		sprintf(kph, "%3u km/h ", (unsigned int)((speed +5U) / 10U));
 		lcd_sendcommand(0x85);
@@ -103,6 +105,7 @@ int main(void)
 
 }
 
+/* Linearly map PWM duty cycle to RPM */
 static uint32_t estimate_target_rpm(uint32_t duty)
 {
 	if(duty < MOTOR_START_DUTY_CYCLE)
@@ -118,25 +121,6 @@ static uint32_t estimate_target_rpm(uint32_t duty)
 
 	return START_RPM + (uint32_t)(((uint64_t)rpm_range * usable_duty
 			+ usable_duty_range / 2U) / usable_duty_range);
-}
-
-static uint32_t update_rpm_model(uint32_t current_rpm, uint32_t target_rpm)
-{
-	if(target_rpm > current_rpm)
-	{
-		uint32_t step = (target_rpm - current_rpm + 3U) / 4U;
-
-		return current_rpm + step;
-	}
-
-	if(target_rpm < current_rpm)
-	{
-		uint32_t step = (current_rpm - target_rpm + 7U) / 8U;
-
-		return current_rpm - step;
-	}
-
-	return current_rpm;
 }
 
 static uint32_t rpm_to_speed(uint32_t rpm)

@@ -1,4 +1,4 @@
-../Core/Src/adc1.c:9:6:gpio_init	4	static
-../Core/Src/adc1.c:16:6:adc1_init	16	static
-../Core/Src/adc1.c:45:6:adc1_start_conversion	4	static
-../Core/Src/adc1.c:50:10:adc1_read	4	static
+../Core/Src/adc1.c:10:6:gpio_init	4	static
+../Core/Src/adc1.c:17:6:adc1_init	16	static
+../Core/Src/adc1.c:51:6:adc1_start_conversion	4	static
+../Core/Src/adc1.c:56:10:adc1_read	4	static
