@@ -1,0 +1,9 @@
+../Drivers/CMSIS/Include/core_cm4.h:1688:22:__NVIC_EnableIRQ	16	static
+../Drivers/CMSIS/Include/core_cm4.h:1816:22:__NVIC_SetPriority	16	static
+../Core/Inc/usart1.c:27:6:usart1_init	8	static
+../Core/Inc/usart1.c:80:6:usart1_transmit_byte	16	static
+../Core/Inc/usart1.c:88:6:usart1_receive_byte	16	static
+../Core/Inc/usart1.c:99:6:usart1_transmit_string	24	static
+../Core/Inc/usart1.c:108:6:usart1_rx_interrupt_handler	8	static
+../Core/Inc/usart1.c:140:6:usart1_rx_interrupt_test_handler	8	static
+../Core/Inc/usart1.c:147:6:USART1_IRQHandler	8	static
