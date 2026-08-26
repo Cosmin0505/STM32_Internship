@@ -1,0 +1,11 @@
+C:/Users/busilam/Cosmin/Traingings/STM32_Bare_Metal/STM32Cube_FW_F0_V1.10.0/Drivers/CMSIS/Include/core_cm0.h:629:22:NVIC_EnableIRQ	1
+C:/Users/busilam/Cosmin/Traingings/STM32_Bare_Metal/STM32Cube_FW_F0_V1.10.0/Drivers/CMSIS/Include/core_cm0.h:688:22:NVIC_SetPriority	2
+../Src/i2c.c:31:16:get_le32	1
+../Src/i2c.c:40:6:gpio_i2c2_init_master	1
+../Src/i2c.c:63:6:i2c2_init	1
+../Src/i2c.c:94:6:gpio_led_init	1
+../Src/i2c.c:102:6:gpio_button_init	1
+../Src/i2c.c:109:6:exti_init	1
+../Src/i2c.c:124:13:i2c2_start_xyz_read	2
+../Src/i2c.c:147:6:EXTI4_15_IRQHandler	1
+../Src/i2c.c:154:6:I2C2_IRQHandler	9
