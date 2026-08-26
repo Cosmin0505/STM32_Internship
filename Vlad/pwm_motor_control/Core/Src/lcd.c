@@ -7,6 +7,7 @@
 #include "lcd.h"
 
 
+
 void delay_ms(uint32_t ms) {
     for (uint32_t i = 0; i < ms * 4000; i++) {
         __NOP();
@@ -66,6 +67,19 @@ void lcd_write(char *s)
 	while(*s)
 	{
 		lcd_senddata(*s++);
+	}
+}
+
+void lcd_create_mirrored_char(uint8_t slot, uint8_t *pixel_data)
+{
+	if(slot > 7)
+		return;
+
+	lcd_sendcommand(0x40 | (slot << 3));
+
+	for(uint8_t i = 0; i < 8; i++)
+	{
+		lcd_senddata(pixel_data[i]);
 	}
 }
 

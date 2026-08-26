@@ -1,5 +1,4 @@
 #include "stm32f3xx.h"
-#include "main.h"
 #include "sys_clock.h"
 #include "adc1.h"
 #include "lcd.h"
@@ -8,6 +7,9 @@
 #include <stdio.h>
 
 #define PROPELLER_DIAMETER 60U
+#define RPM_TO_SPEED_NUMERATOR 188496ULL
+#define RPM_TO_SPEED_DENOMINATOR 100000000ULL
+#define RPM_TO_SPEED_ROUND 50000000ULL
 
 #define PWM_MAX_COMPARE 1000U
 #define ADC_SAMPLES 64U
@@ -68,29 +70,30 @@ int main(void)
 
 
 		/* Indicate RPM ranges using LEDs */
-		if(conv < 800)
-		{
-			green_led(0U);
-			yellow_led(0U);
-			red_led(0U);
-		}
-		else if(conv < 2000)
+		green_led(0U);
+		yellow_led(0U);
+		red_led(0U);
+		if((conv < 800) && (conv <= 2000))
 		{
 			green_led(1U);
 			yellow_led(0U);
 			red_led(0U);
 		}
-		else if(conv < 3500)
+		else if((conv > 2000) && (conv <= 3500))
 		{
 			green_led(1U);
 			yellow_led(1U);
 			red_led(0U);
 		}
-		else
+		else if(conv > 3500)
 		{
 			green_led(1U);
 			yellow_led(1U);
 			red_led(1U);
+		}
+		else
+		{
+			/* Unreachable, no action required */
 		}
 
 		/* Refresh LCD screen readings */
@@ -102,7 +105,6 @@ int main(void)
 		lcd_sendcommand(0xC7);
 		lcd_write(kph);
 	}
-
 }
 
 /* Linearly map PWM duty cycle to RPM */
@@ -119,14 +121,16 @@ static uint32_t estimate_target_rpm(uint32_t duty)
 
 	uint32_t rpm_range = FULL_DUTY_RPM - START_RPM;
 
-	return START_RPM + (uint32_t)(((uint64_t)rpm_range * usable_duty
-			+ usable_duty_range / 2U) / usable_duty_range);
+	uint32_t estimated_rpm  = START_RPM + (uint32_t)(((uint64_t)rpm_range * usable_duty
+							  + usable_duty_range / 2U) / usable_duty_range);
+
+	return estimated_rpm;
 }
 
 static uint32_t rpm_to_speed(uint32_t rpm)
 {
 	uint64_t numerator = (uint64_t)rpm * PROPELLER_DIAMETER
-						* 188496ULL;
+						* RPM_TO_SPEED_NUMERATOR;
 
-	return (uint32_t)((numerator + 50000000ULL) / 100000000ULL);
+	return (uint32_t)((numerator + RPM_TO_SPEED_ROUND) / RPM_TO_SPEED_DENOMINATOR);
 }

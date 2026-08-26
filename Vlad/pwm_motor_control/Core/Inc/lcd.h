@@ -24,6 +24,7 @@ void lcd_init(void);
 void lcd_sendcommand(uint8_t cmd);
 void lcd_senddata(uint8_t data);
 void lcd_write(char *s);
+void lcd_create_mirrored_char(uint8_t slot, uint8_t *pixel_data);
 
 
 #endif /* INC_LCD_H_ */
