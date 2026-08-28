@@ -1,5 +1,33 @@
 #include "stm32f3xx_driver.h"
 
+void clock_init(void)
+{
+	FLASH->ACR = FLASH_ACR_PRFTBE | FLASH_ACR_LATENCY_1;
+
+	RCC->CR |= RCC_CR_HSION;
+	while(!(RCC->CR & RCC_CR_HSIRDY));
+
+	RCC->CR &= ~RCC_CR_PLLON;
+	while(RCC->CR & RCC_CR_PLLRDY);
+
+	RCC->CFGR &= ~(RCC_CFGR_PLLSRC | RCC_CFGR_PLLMUL |
+					RCC_CFGR_HPRE | RCC_CFGR_PPRE1 | RCC_CFGR_PPRE2);
+	RCC->CFGR |= (RCC_CFGR_PLLMUL12
+				| RCC_CFGR_HPRE_DIV1
+				| RCC_CFGR_PPRE1_DIV2
+				| RCC_CFGR_PPRE2_DIV1);
+
+	RCC->CR |= RCC_CR_PLLON;
+	while(!(RCC->CR & RCC_CR_PLLRDY));
+
+	RCC->CFGR &= ~RCC_CFGR_SW;
+	RCC->CFGR |= RCC_CFGR_SW_PLL;
+	while((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_PLL);
+
+	RCC->CFGR3 &= ~RCC_CFGR3_USART1SW;
+
+}
+
 void delay_ms(uint32_t ms) {
     for (uint32_t i = 0; i < ms * 4000; i++) {
         __NOP();
@@ -292,50 +320,6 @@ void i2c_take_snapshot(uint8_t *g_tx_buf, uint8_t *g_staging)
 	g_tx_index = 0u;
 }
 
-void I2C1_EV_IRQHandler(uint8_t *g_tx_index, uint8_t *g_tx_buf)
-{
-	uint32_t isr = I2C1->ISR;
-
-	/* Handle an address match from the master */
-	if(isr & I2C_ISR_ADDR)
-	{
-		/* DIR bit set means the master is trying to read */
-		if(isr & I2C_ISR_DIR)
-		{
-
-			/* Prepare snapshot and flush any existing bytes in the transmit register */
-			I2C1->ISR = I2C_ISR_TXE;
-
-			i2c_take_snapshot();
-		}
-
-		/* Clear address flag and refresh ISR */
-		I2C1->ICR = I2C_ICR_ADDRCF;
-		isr = I2C1->ISR;
-	}
-
-
-	/* Send next byte is the transmit register is ready */
-	if(isr & I2C_ISR_TXIS){
-		uint8_t b = 0xFFu; // required if the packet length runs out
-		if(g_tx_index < GYRO_PACKET_LEN)
-		{
-			b = g_tx_buf[g_tx_index++];
-		}
-		I2C1->TXDR = b;
-	}
-
-	if(isr & I2C_ISR_NACKF)
-	{
-		I2C1->ICR = I2C_ICR_NACKCF;
-	}
-
-	if(isr & I2C_ISR_STOPF)
-	{
-		I2C1->ICR = I2C_ICR_STOPCF;
-	}
-}
-
 void tim3_pwm_init()
 {
 	RCC->AHBENR |= RCC_AHBENR_GPIOAEN;
@@ -585,3 +569,295 @@ void gyro_read_xyz_mdps(volatile int32_t *x, volatile int32_t *y, volatile int32
     *z = raw_to_mdps((int32_t)rz - g_bias.z);
 }
 
+void uart4_interrupt_init(uint16_t baud_rate)
+{
+	/* Enable GPIOC clock */
+	RCC->AHBENR |= RCC_AHBENR_GPIOCEN;
+
+	/* Enable UART4 clock */
+	RCC->APB1ENR |= RCC_APB1ENR_UART4EN;
+
+	/* Configure Pins PC10 and PC11 in Alternate function mode */
+	GPIOC->MODER &= ~((3U << (10 * 2)) | (3U << (11 * 2)));
+	GPIOC->MODER |= ((2U << (10 * 2)) | (2U << (11 * 2)));
+
+
+	/* Configure alternate functions for GPIO pins*/
+	GPIOC->AFR[1] &= ~((15U << ((10 - 8) * 4)) | (15U << ((11 - 8) * 4)));
+	GPIOC->AFR[1] |= ((5U << ((10 - 8) * 4)) | (5U << ((11 - 8) * 4)));
+
+
+	/* Configure pins to High Speed */
+	GPIOC->OSPEEDR &= ~((3U << (10 * 2)) | (3U << (11 * 2)));
+	GPIOC->OSPEEDR |= ((3U << (10 * 2)) | (3U << (11 * 2)));
+
+	/* Configure pins output type */
+	GPIOC->OTYPER &= ~((1U << 10) | (1U << 11));
+
+	GPIOC->PUPDR &= ~((3U << (10 * 2)) | (3U << (11 * 2)));
+	GPIOC->PUPDR |= (1U << (11 * 2));
+
+	/* Configure oversampling of 16 and disable UART during set-up*/
+	UART4->CR1 = 0;
+
+	/* Configure the other config registers with default settings */
+	UART4->CR2 = 0;
+	UART4->CR3= 0;
+
+	/* Configure baud rate */
+	UART4->BRR = (APB1CLK + baud_rate / 2) / baud_rate;
+
+	/* Generate an interrupt every time something is received */
+	UART4->CR1 |= USART_CR1_RXNEIE;
+
+	/* Enable UART, transmission and reception */
+	UART4->CR1 |= UART4_UE | UART4_RE | UART4_TE;
+
+	while((UART4->ISR & USART_ISR_TEACK) == 0U);
+	while((UART4->ISR & USART_ISR_REACK) == 0U);
+
+	NVIC_EnableIRQ(UART4_IRQn);
+}
+
+void dma2_init(char *string_to_be_transmitted)
+{
+	/* Enable clock for DMA2 */
+	RCC->AHBENR |= DMA2EN;
+
+	/* Disable Channel 5 */
+	DMA2_Channel5->CCR &= ~DMA_CCR_EN;
+
+	/* Clear all error flags for Channel 5 */
+	DMA2->IFCR |= DMA_IFCR_CGIF5;
+	DMA2->IFCR |= DMA_IFCR_CTCIF5;
+	DMA2->IFCR |= DMA_IFCR_CHTIF5;
+	DMA2->IFCR |= DMA_IFCR_CTEIF5;
+
+	/* Set destination buffer */
+	DMA2_Channel5->CPAR = (uint32_t)&UART4->TDR;
+
+	/* Set source buffer */
+	DMA2_Channel5->CMAR = (uint32_t)&string_to_be_transmitted_uart4;
+
+	/* Enable memory increment */
+	DMA2_Channel5->CCR |= CCR5MINC;
+
+	/* Set memory to peripheral direction */
+	DMA2_Channel5->CCR |= CCR5DIR;
+
+	/* Set PSIZE = 8 bit*/
+	DMA2_Channel5->CCR &= ~(3U << 8);
+
+	/* Set MSIZE = 8 bit*/
+	DMA2_Channel5->CCR &= ~(3U << 10);
+
+	/* Enable DMA transmitter in USART1 */
+	UART4->CR3 |= USART_CR3_DMAT;
+}
+
+void uart4_transmit_byte(char c)
+{
+	if((UART4->ISR & USART_ISR_TC))
+	{
+		UART4->TDR = c;
+	}
+}
+
+void uart4_receive_byte(char *c){
+
+	if(UART4->ISR & USART_ISR_ORE)
+	{
+		UART4->ICR |= USART_ICR_ORECF;
+	}
+
+	*c = (char)(UART4->RDR);
+}
+
+void uart4_transmit_string(char *s)
+{
+	while(s != '\0')
+	{
+		uart4_transmit_byte(s);
+		s++;
+	}
+}
+
+bool uart4_tx_busy(void)
+{
+	return (DMA2_Channel5->CNDTR != 0U);
+}
+
+bool uart4_write(const char *s, char *tx_buf)
+{
+	if(uart4_tx_busy())
+		return false;
+
+	uint16_t len = strlen(s);
+
+	if(len == 0U)
+		return false;
+
+	memcpy(tx_buf, s, len);
+
+
+
+	DMA2_Channel5->CCR &= ~DMA_CCR_EN;
+
+	DMA2->IFCR |= DMA_IFCR_CGIF5;
+	DMA2->IFCR |= DMA_IFCR_CTCIF5;
+	DMA2->IFCR |= DMA_IFCR_CHTIF5;
+	DMA2->IFCR |= DMA_IFCR_CTEIF5;
+
+	DMA2_Channel5->CMAR = (uint32_t)tx_buf;
+	DMA2_Channel5->CNDTR = len;
+	DMA2_Channel5->CCR |= DMA_CCR_EN;
+
+	return true;
+}
+
+void usart1_interrupt_init(uint16_t baud_rate)
+{
+	/* Enable GPIOC clock */
+	RCC->AHBENR |= RCC_AHBENR_GPIOCEN;
+
+	/* Enable USART1 clock */
+	RCC->APB2ENR |= RCC_APB2ENR_USART1EN;
+
+	/* Configure Pins PC4 and PC5 in Alternate function mode */
+	GPIOC->MODER &= ~((3U << (4 * 2)) | (3U << (5 * 2)));
+	GPIOC->MODER |= ((2U << (4 * 2)) | (2U << (5 * 2)));
+
+
+	/* Configure alternate functions for GPIO pins*/
+	GPIOC->AFR[0] &= ~((15U << (4 * 4)) | (15U << (5 * 4)));
+	GPIOC->AFR[0] |= ((7U << (4 * 4)) | (7U << (5 * 4)));
+
+
+	/* Configure pins to High Speed */
+	GPIOC->OSPEEDR &= ~((3U << (4 * 2)) | (3U << (5 * 2)));
+	GPIOC->OSPEEDR |= ((3U << (4 * 2)) | (3U << (5 * 2)));
+
+	/* Configure pins output type */
+	GPIOC->OTYPER &= ~(1U << 4 | 1U << 5);
+
+	GPIOC->PUPDR &= ~((3U << (4 * 2)) | (3U << (5 * 2)));
+	GPIOC->PUPDR |= (1U << (5 * 2));
+
+	/* Configure oversampling of 16 and disable UART during set-up*/
+	USART1->CR1 = 0;
+
+	/* Configure the other config registers with default settings */
+	USART1->CR2 = 0;
+	USART1->CR3= 0;
+
+
+	/* Configure baud rate */
+	USART1->BRR = (APB2CLK + BAUD_RATE / 2) / BAUD_RATE;
+
+
+	/* Generate an interrupt every time something is received */
+	USART1->CR1 |= USART_CR1_RXNEIE;
+
+	/* Enable UART, transmission and reception */
+	USART1->CR1 |= USART1_UE | USART1_RE | USART1_TE;
+
+	while((USART1->ISR & USART_ISR_TEACK) == 0U);
+	while((USART1->ISR & USART_ISR_REACK) == 0U);
+
+	NVIC_SetPriority(USART1_IRQn, 2);
+	NVIC_EnableIRQ(USART1_IRQn);
+}
+
+void dma1_init(char *string_to_be_transmitted)
+{
+	/* Enable clock for DMA1 */
+	RCC->AHBENR |= DMA1EN;
+
+	/* Disable Channel 4 */
+	DMA1_Channel4->CCR &= ~DMA_CCR_EN;
+
+	/* Clear all error flags for Channel 4 */
+	DMA1->IFCR |= DMA_IFCR_CGIF4;
+	DMA1->IFCR |= DMA_IFCR_CTCIF4;
+	DMA1->IFCR |= DMA_IFCR_CHTIF4;
+	DMA1->IFCR |= DMA_IFCR_CTEIF4;
+
+	/* Set destination buffer */
+	DMA1_Channel4->CPAR = (uint32_t)&USART1->TDR;
+
+	/* Set source buffer */
+	DMA1_Channel4->CMAR = (uint32_t)&string_to_be_transmitted;
+
+	/* Enable memory increment */
+	DMA1_Channel4->CCR |= CCR4MINC;
+
+	/* Set memory to peripheral direction */
+	DMA1_Channel4->CCR |= CCR4DIR;
+
+	/* Set PSIZE = 8 bit*/
+	DMA1_Channel4->CCR &= ~(3U << 8);
+
+	/* Set MSIZE = 8 bit*/
+	DMA1_Channel4->CCR &= ~(3U << 10);
+
+	/* Enable DMA transmitter in USART1 */
+	USART1->CR3 |= USART_CR3_DMAT;
+}
+
+void usart1_transmit_byte(char *c)
+{
+	if((USART1->ISR & USART_ISR_TC))
+	{
+		USART1->TDR = c;
+	}
+}
+
+void usart1_receive_byte(char *c)
+{
+	if((USART1->ISR & USART_ISR_RXNE) == USART_ISR_RXNE)
+	{
+		*c = (char)(USART1->RDR);
+	}
+}
+
+void usart1_transmit_string(char *s)
+{
+	while(s != '\0')
+	{
+		usart1_transmit_byte(s);
+		s++;
+	}
+}
+
+bool usart1_tx_busy(void)
+{
+	return (DMA1_Channel4->CNDTR != 0U);
+}
+
+bool usart1_write(const char *s, char *tx_buf)
+{
+	if(usart1_tx_busy())
+		return false;
+
+	uint16_t len = strlen(s);
+
+	if(len == 0U)
+		return false;
+
+	memcpy(tx_buf, s, len);
+
+
+
+	DMA1_Channel4->CCR &= ~DMA_CCR_EN;
+
+	DMA1->IFCR |= DMA_IFCR_CGIF4;
+	DMA1->IFCR |= DMA_IFCR_CTCIF4;
+	DMA1->IFCR |= DMA_IFCR_CHTIF4;
+	DMA1->IFCR |= DMA_IFCR_CTEIF4;
+
+	DMA1_Channel4->CMAR = (uint32_t)tx_buf;
+	DMA1_Channel4->CNDTR = len;
+	DMA1_Channel4->CCR |= DMA_CCR_EN;
+
+	return true;
+}

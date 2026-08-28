@@ -3,42 +3,75 @@
 
 #include "stm32f3xx.h"
 #include <stdint.h>
+#include <stdbool.h>
+#include <string.h>
+#include <stdlib.h>
 
 /* LCD pins defines */
-#define LCD_ADDRESS 0x3F
-#define LCD_RS (1U << 0)
-#define LCD_RW (1U << 1)
-#define LCD_E (1U << 2)
-#define LCD_BT (1U << 3)
-#define LCD_DATA (1U << 4)
+#define LCD_ADDRESS 		 0x3F
+#define LCD_RS 				 (1U << 0)
+#define LCD_RW 				 (1U << 1)
+#define LCD_E 				 (1U << 2)
+#define LCD_BT 				 (1U << 3)
+#define LCD_DATA 			 (1U << 4)
 
 /* I2C1 slave mode defines */
-#define I2C_SLAVE_ADDR_7BIT 0x42u
-#define GYRO_PACKET_LEN 12u
+#define I2C_SLAVE_ADDR_7BIT   0x42u
+#define GYRO_PACKET_LEN 	  12u
 
 /* L3GD20 Gyroscope defines */
-#define L3GD20_READ 0x80u
-#define L3GD20_WRITE 0x00u
-#define L3GD20_AUTOINC 0x40u
-#define L3GD20_WHO_AM_I 0x0Fu
-#define L3GD20_CTRL_REG1 0x20u
-#define L3GD20_CTRL_REG4 0x23u
-#define L3GD20_CTRL_REG5 0x24u
-#define L3GD20_STATUS_REG 0x27u
-#define L3GD20_OUT_X_L 0x28u
-#define L3GD20_STATUS_ZYXDA (1U << 3)
+#define L3GD20_READ 		  0x80u
+#define L3GD20_WRITE 		  0x00u
+#define L3GD20_AUTOINC 	      0x40u
+#define L3GD20_WHO_AM_I 	  0x0Fu
+#define L3GD20_CTRL_REG1 	  0x20u
+#define L3GD20_CTRL_REG4 	  0x23u
+#define L3GD20_CTRL_REG5 	  0x24u
+#define L3GD20_STATUS_REG 	  0x27u
+#define L3GD20_OUT_X_L 		  0x28u
+#define L3GD20_STATUS_ZYXDA   (1U << 3)
 
 /* L3GD20 Gyroscope calibration defines */
-#define CAL_DISCARD_SAMPLES    20u
+#define CAL_DISCARD_SAMPLES   20u
 #define CAL_SAMPLE_COUNT      128u
-#define CAL_MAX_SPREAD_LSB     300
+#define CAL_MAX_SPREAD_LSB    300
 #define CAL_MAX_BIAS_LSB      1400
+#define CS_SET 		          (1U << 3)
+#define CS_RESET 			  (1U << (3 + 16))
+
+/* USART1 / UART4 defines */
+#define APB1CLK 24000000UL
+#define APB2CLK 48000000UL
+#define UART4_UE 1U
+#define UART4_RE (1U << 2)
+#define UART4_TE (1U << 3)
+#define USART1_UE 1U
+#define USART1_RE (1U << 2)
+#define USART1_TE (1U << 3)
+
+/* DMA2 defines */
+#define DMA2EN (1U << 1)
+#define CCR5MINC (1U << 7)
+#define CCR5DIR	(1U << 4)
+#define CCR5TCIE (1U << 1)
 
 /* Used for storing measured bias during calibration of the gyroscope */
 typedef struct {
     int16_t x, y, z;
     uint8_t valid;
 } gyro_bias_t;
+
+/*
+ * @brief: This function configures the microcontroller to run from a internal 8MHz HSI oscillator
+ * 		   through the PLL with the following settings:
+ * 		   		- SYSCLK: 48 MHz
+ * 		   		- AHB clock: 48 MHz
+ * 		   		- APB1 clock (PCLK1): 24 MHz
+ * 		   		- APB2 clock (PCLK2): 48 MHz
+ * @param: none
+ * @retval: none
+ *  */
+void clock_init(void);
 
 /*
  * @brief: This function blocks the execution of the program for a specified amount of time.
@@ -268,5 +301,111 @@ void gyro_read_xyz(int16_t *x, int16_t *y, int16_t *z);
  *  */
 void gyro_read_xyz_mdps(volatile int32_t *x, volatile int32_t *y, volatile int32_t *z);
 
+/*
+ * @brief: This function:
+ * 		   - configures pins PC10 (rx) and PC11 (tx) for UART4 communication
+ * 		   - configures UART4 to work at specified baud rate
+ * 		   - enables transmit and receive interrupts on UART4
+ * @param: uint16_t baud_rate - UART4 working baud rate
+ * @retval: none
+ *  */
+void uart4_interrupt_init(uint16_t baud_rate);
 
+/*
+ * @brief: This function configures DMA2 Channel 5 to transmit a string through UART4
+ * @param: char *string_to_be_transmitted - pointer to the string to be transmitted
+ * @retval: none
+ *  */
+void dma2_init(char *string_to_be_transmitted);
+
+/*
+ * @brief: This function transmits a byte of data over UART4
+ * @param: char c - the byte to be transmitted
+ * @retval: none
+ *  */
+void uart4_transmit_byte(char c);
+
+/*
+ * @brief: This function reads the receive register of UART4
+ * @param: char *c - pointer to the variable where the byte of received data will be stored
+ * @retval: none
+ *  */
+void uart4_receive_byte(char *c);
+
+/*
+ * @brief: This function transmits a string over UART4 by individually sending each byte of data
+ * @param: char *s - pointer to the string to be transmitted
+ * @retval: none
+ */
+void uart4_transmit_string(char *s);
+
+/*
+ * @brief: This function checks if any UART4 DMA transmission is under-way
+ * @param: none
+ * @retval: True - UART4 transmission is under-way
+ * 			False - UART4 transmission is complete
+ *  */
+bool uart4_tx_busy(void);
+
+/*
+ * @brief: This function transmits a string over UART4 asynchronously using DMA
+ * @param: const char *s - pointer to the string to be transmitted
+ * @retval: True - the transmission was successful
+ * 			False - the transmission failed
+ * */
+bool uart4_write(const char *s);
+
+/*
+ * @brief: This function:
+ * 		   - configures pins PC4 (rx) and PC5 (tx) for USART1 communication
+ * 		   - configures USART1 to work at specified baud rate
+ * 		   - enables transmit and receive interrupts on USART1
+ * @param: uint16_t baud_rate - UART4 working baud rate
+ * @retval: none
+ *  */
+void usart1_init(uint16_t baud_rate);
+
+/*
+ * @brief: This function configures DMA1 Channel 4 to transmit a string through USART1
+ * @param: char *string_to_be_transmitted - pointer to the string to be transmitted
+ * @retval: none
+ *  */
+void dma1_init(char *string_to_be_transmitted);
+
+/*
+ * @brief: This function reads the receive register of USART1
+ * @param: char *c - pointer to the variable where the byte of received data will be stored
+ * @retval: none
+ *  */
+void usart1_transmit_byte(char *c);
+
+/*
+ * @brief: This function reads the receive register of USART1
+ * @param: char *c - pointer to the variable where the byte of received data will be stored
+ * @retval: none
+ *  */
+void usart1_receive_byte(char *c);
+
+/*
+ * @brief: This function transmits a string over USART1 by individually sending each byte of data
+ * @param: char *s - pointer to the string to be transmitted
+ * @retval: none
+ */
+void usart1_transmit_string(char *s);
+
+/*
+ * @brief: This function checks if any USART1 DMA transmission is under-way
+ * @param: none
+ * @retval: True - USART1 transmission is under-way
+ * 			False - USART1 transmission is complete
+ *  */
+bool usart1_tx_busy(void);
+
+/*
+ * @brief: This function transmits a string over USART1 asynchronously using DMA
+ * @param: const char *s - pointer to the string to be transmitted
+ * @retval: True - the transmission was successful
+ * 			False - the transmission failed
+ * */
+bool usart1_write(const char *s);
 #endif
